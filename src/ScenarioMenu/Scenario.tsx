@@ -2,6 +2,7 @@ import { Container, Row, Col, Button, Form } from "react-bootstrap";
 import { FaTimes } from "react-icons/fa";
 import { useState } from "react";
 import "./Scenario.css";
+import { Link } from "react-router-dom";
 
 function Scenario({
   title,
@@ -17,6 +18,7 @@ function Scenario({
   const [editableTitle, setEditableTitle] = useState(title);
 
   return (
+    <Link to={`/scenario/${id}`} className="text-decoration-none">
     <Container
       fluid
       className="scenario-container p-0 rounded-4 shadow-sm mx-1"
@@ -63,6 +65,7 @@ function Scenario({
         </Col>
       </Row>
     </Container>
+    </Link>
   );
 }
 

@@ -9,10 +9,10 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { FaArrowRight, FaArrowLeft, FaPlus, FaTimes } from "react-icons/fa";
+import { FaArrowRight, FaArrowLeft, FaPlus, FaTimes, FaHouseUser } from "react-icons/fa";
 import { Modal, Button, Form } from "react-bootstrap";
 import "./MapRoute.css";
-
+import { Link } from "react-router-dom";
 // Fix default Leaflet icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -26,6 +26,7 @@ L.Icon.Default.mergeOptions({
 
 interface MapRouteProps {
   points: [number, number][];
+  title: string;
 }
 
 const ZoomTopRight = () => {
@@ -60,7 +61,7 @@ interface Vehicle {
   maxDistance: number;
 }
 
-const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
+const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [isOverlayOpen, setIsOverlayOpen] = useState(true);
 
@@ -169,10 +170,13 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
           overflowY: "auto",
         }}
         className="m-4 rounded-5 p-5"
-      >
+        >
+          <div className="d-flex justify-content-between align-items-center"> 
+            <h1 className="fw-bold fs-2 mb-5">Parameters</h1>
+          </div>
         {/* Customers Section */}
         <div className="section-header">
-          <h4>Customers</h4>
+        <h4 className="fw-bold">Customers</h4>
           <button
             className="button-circle"
             onClick={() => setShowModal("customer")}
@@ -180,6 +184,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
             <FaPlus />
           </button>
         </div>
+            <hr className="w-100 mb-4"/>
         <ul className="list">
           {customers.map((c) => (
             <li key={c.id} className="list-item">
@@ -200,7 +205,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
 
         {/* Depots Section */}
         <div className="section-header">
-          <h4>Depots</h4>
+          <h4 className="fw-bold">Depots</h4>
           <button
             className="button-circle"
             onClick={() => setShowModal("depot")}
@@ -208,6 +213,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
             <FaPlus />
           </button>
         </div>
+        <hr className="w-100 mb-4"/>
         <ul className="list">
           {depots.map((d) => (
             <li key={d.id} className="list-item">
@@ -229,7 +235,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
 
         {/* Vehicles Section */}
         <div className="section-header">
-          <h4>Vehicles</h4>
+          <h4 className="fw-bold"> Vehicles</h4>
           <button
             className="button-circle"
             onClick={() => setShowModal("vehicle")}
@@ -254,6 +260,20 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
             </li>
           ))}
         </ul>
+
+        <Button
+  variant="primary"
+  className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 button-circle"
+  style={{ bottom: "20px", right: "20px", minWidth: "200px", paddingBottom: "40px !important", paddingTop: "10px !important" }}
+>
+  <span className="me-3">Save</span>
+  <span
+    className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
+    style={{ width: "32px", height: "32px" }}
+  >
+    <FaArrowRight size={14} />
+  </span>
+</Button>
       </div>
       <div
         style={{
@@ -268,9 +288,10 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
           height: "65px",
           display: "flex",
           alignItems: "center",
+          justifyContent: "left",
           gap: "10px",
         }}
-        className="m-4 rounded-4 py-4 px-3 button-circle rounded-pill"
+        className="m-4 rounded-4 py-4 px-3 rounded-pill"
       >
         {/* Circular plus button with FaPlus icon */}
         <button
@@ -288,12 +309,52 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
             fontSize: "18px",
           }}
           onClick={() => console.log("Plus button clicked")}
+          className="button-circle "
         >
           <FaPlus />
         </button>
 
-        <p className="text-custom-color-grey-lighter fw-bold fs-3 m-0">Title</p>
+        <p className="text-custom-color-grey-lighter fw-bold fs-3 m-0 ps-2">{title}</p>
       </div>
+      <Link to="/">
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 40,
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            zIndex: 1000,
+            padding: "10px",
+            transition: "all 0.3s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "left",
+            gap: "10px",
+          }}
+          className="m-4 rounded-4 py-2 px-2 rounded-pill"
+        >
+          {/* Circular plus button with FaPlus icon */}
+          <button
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              backgroundColor: "#0d6efd", // Bootstrap primary
+              color: "white",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "18px",
+            }}
+            onClick={() => console.log("Plus button clicked")}
+            className="button-circle "
+          >
+            <FaHouseUser />
+          </button>
+        </div>
+      </Link>
 
       <button
         onClick={() => setIsOverlayOpen(!isOverlayOpen)}
@@ -503,9 +564,6 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
           )}
         </Modal.Body>
         <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(null)}>
-            Cancel
-          </Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -513,7 +571,8 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
               if (showModal === "depot") addDepot();
               if (showModal === "vehicle") addVehicle();
             }}
-          >
+            className="rounded-pill button-circle bg-custom-color-grey-lighter mx-1 px-5 py-4"         
+             >
             Add
           </Button>
         </Modal.Footer>

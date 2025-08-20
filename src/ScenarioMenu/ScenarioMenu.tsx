@@ -2,6 +2,7 @@ import { Container, Row, Col, Button } from "react-bootstrap";
 import { FaPlus } from "react-icons/fa";
 import Scenario from "./Scenario";
 import { useState } from "react";
+import MapRoute from "../MapRoute/MapRoute";
 
 interface ScenarioInterface {
   id: number;
@@ -84,3 +85,4 @@ function ScenarioMenu() {
 }
 
 export default ScenarioMenu;
+

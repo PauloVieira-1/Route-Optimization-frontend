@@ -19,28 +19,20 @@ function HomeHeader() {
           </p>
         </Col>
       </Row>
-      <Button
-        variant="primary"
-        className="button-circle fw-bold fs-5 position-absolute rounded-pill px-4 py-2 d-flex justify-content-between align-items-center"
-        style={{ bottom: "20px", right: "20px", minWidth: "200px" }}
-      >
-        <span>Learn More</span>
-        <span
-          className="arrow-circle-wrapper position-relative ms-3"
-          style={{ width: "28px", height: "28px" }}
-        >
-          <span
-            className="arrow-circle d-inline-flex justify-content-center align-items-center rounded-circle text-primary"
-            style={{
-              width: "28px",
-              height: "28px",
-              backgroundColor: "#ffffff",
-            }}
-          >
-            <FaArrowRight size={14} />
-          </span>
-        </span>
-      </Button>
+<Button
+  variant="primary"
+  className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-2"
+  style={{ bottom: "20px", right: "20px", minWidth: "200px" }}
+>
+  <span className="me-3">Learn More</span>
+  <span
+    className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
+    style={{ width: "32px", height: "32px" }}
+  >
+    <FaArrowRight size={14} />
+  </span>
+</Button>
+
     </Container>
   );
 }
