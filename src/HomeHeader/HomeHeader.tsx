@@ -1,4 +1,6 @@
 import { Container, Row, Col, Button } from 'react-bootstrap'
+import { FaArrowRight } from 'react-icons/fa'
+import "./HomeHeader.css"
 
 function HomeHeader() {
     return (
@@ -17,13 +19,23 @@ function HomeHeader() {
                     </p>
                 </Col>
             </Row>
-
             <Button 
                 variant="primary" 
-                className="fw-bold fs-5 position-absolute rounded-pill px-4 py-2" 
-                style={{ bottom: "20px", right: "20px" }}
+                className="button-circle fw-bold fs-5 position-absolute rounded-pill px-4 py-2 d-flex justify-content-between align-items-center" 
+                style={{ bottom: "20px", right: "20px", minWidth: "200px" }}
             >
-                Get Started
+                <span>Learn More</span>
+                <span 
+                    className="arrow-circle-wrapper position-relative ms-3"
+                    style={{ width: "28px", height: "28px" }}
+                >
+                    <span 
+                        className="arrow-circle d-inline-flex justify-content-center align-items-center rounded-circle text-primary" 
+                        style={{ width: "28px", height: "28px", backgroundColor: "#ffffff" }}
+                    >
+                        <FaArrowRight size={14} />
+                    </span>
+                </span>
             </Button>
         </Container>
     )

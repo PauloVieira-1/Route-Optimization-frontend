@@ -1,0 +1,30 @@
+/* Arrow circle stays completely flat and independent */
+.arrow-circle-wrapper {
+  position: relative; /* prevents shrinking with button transform */
+}
+
+.arrow-circle {
+  transition: background-color 0.3s ease, color 0.3s ease;
+  box-shadow: none !important;
+}
+
+/* Hover: only color changes, arrow circle independent */
+.button-circle:hover .arrow-circle {
+  background-color: #0d6efd !important;
+  color: #fff !important;
+}
+
+/* Button hover / active states */
+.button-circle {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.button-circle:hover {
+  box-shadow: 0 -4px 6px rgba(255, 255, 255, 0.6), 0 6px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px);
+}
+
+.button-circle:active {
+  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.3);
+  transform: translateY(1px);
+}
