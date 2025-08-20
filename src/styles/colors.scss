@@ -25,5 +25,3 @@ $theme-colors: map-merge($theme-colors, $custom-colors);
 $primary: #3f75a0;
 
 @import "../../node_modules/bootstrap/scss/bootstrap.scss";
-
-

@@ -1,29 +1,29 @@
 .scenario-container {
-    transition: all 0.15s ease-in-out;
-    border-radius: 9px;
-    position: relative;
+  transition: all 0.15s ease-in-out;
+  border-radius: 9px;
+  position: relative;
 }
 
 .scenario-container:hover {
-    cursor: pointer;
-    transform: scale(1.03);
-    outline: 1px solid #8c8c8c;
+  cursor: pointer;
+  transform: scale(1.03);
+  outline: 1px solid #8c8c8c;
 }
 
 /* Delete button hidden by default */
 .scenario-delete-btn {
-    display: none;
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 10;
-    opacity: 0;
-    transition: all 0.15s ease-in-out;
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  opacity: 0;
+  transition: all 0.15s ease-in-out;
 }
 
 /* Show delete button only when hovering the grey top row */
 .scenario-container:hover .scenario-delete-btn {
-    display: flex;
-    opacity: 1;
-    transform: scale(1.1)!important;
+  display: flex;
+  opacity: 1;
+  transform: scale(1.1) !important;
 }

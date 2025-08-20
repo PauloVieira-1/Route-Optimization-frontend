@@ -9,7 +9,13 @@ interface InputModalProps {
   handleSubmit: () => void;
 }
 
-const InputModal: React.FC<InputModalProps> = ({ show, handleClose, title, children, handleSubmit }) => {
+const InputModal: React.FC<InputModalProps> = ({
+  show,
+  handleClose,
+  title,
+  children,
+  handleSubmit,
+}) => {
   return (
     <Modal show={show} onHide={handleClose}>
       <Modal.Header closeButton>

@@ -4,7 +4,9 @@
 }
 
 .arrow-circle {
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
   box-shadow: none !important;
 }
 
@@ -16,11 +18,15 @@
 
 /* Button hover / active states */
 .button-circle {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .button-circle:hover {
-  box-shadow: 0 -4px 6px rgba(255, 255, 255, 0.6), 0 6px 12px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    0 -4px 6px rgba(255, 255, 255, 0.6),
+    0 6px 12px rgba(0, 0, 0, 0.25);
   transform: translateY(-2px);
 }
 
