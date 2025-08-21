@@ -13,7 +13,8 @@ import { FaArrowRight, FaArrowLeft, FaPlus, FaTimes, FaHouseUser } from "react-i
 import { Modal, Button, Form } from "react-bootstrap";
 import "./MapRoute.css";
 import { Link } from "react-router-dom";
-// Fix default Leaflet icon issue
+import type { Customer, Depot, Vehicle } from "../types";
+
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -37,29 +38,6 @@ const ZoomTopRight = () => {
   return null;
 };
 
-interface Customer {
-  id: number;
-  name: string;
-  x: number;
-  y: number;
-  demand: number;
-}
-
-interface Depot {
-  id: number;
-  name: string;
-  lat: number;
-  lng: number;
-  capacity: number;
-  maxDistance: number;
-  type: string;
-}
-
-interface Vehicle {
-  id: number;
-  capacity: number;
-  maxDistance: number;
-}
 
 const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);

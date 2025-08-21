@@ -33,13 +33,13 @@ function ScenarioMenu() {
   const [scenarios, setScenarios] = useState([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5000/scenarios")
+    fetch("http://127.0.0.1:5100/scenarios")
       .then(res => res.json())
       .then(data => {setScenarios(data); console.log(data);});
   }, []);
 
 function addScenario() {
-  fetch("http://127.0.0.1:5000/scenarios/full", {
+  fetch("http://127.0.0.1:5100/scenarios/full", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(newScenario),
@@ -64,7 +64,7 @@ function addScenario() {
 
 function removeScenario(id: number) {
   console.log("Deleting scenario:", id);
-  fetch(`http://127.0.0.1:5000/scenarios`, {
+  fetch(`http://127.0.0.1:5100/scenarios`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ scenario_id: id })
@@ -82,7 +82,7 @@ function removeScenario(id: number) {
 
 function updateName(id: number, name: string) {
   console.log("changing Name of ", id + " to " + name);
-  fetch(`http://127.0.0.1:5000/scenarios`, {
+  fetch(`http://127.0.0.1:5100/scenarios`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ scenario_id: id, new_name: name })
