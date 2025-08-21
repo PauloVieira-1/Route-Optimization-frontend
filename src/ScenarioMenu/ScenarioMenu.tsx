@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 function getCurrentDate() {
   const date = new Date();
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -15,100 +15,111 @@ const newScenario = {
   name: "Title",
   date: getCurrentDate(),
   depots: [
-    { depot_name: "Depot 1", depot_x: 10, depot_y: 5, capacity: 100, max_distance: 50, type: "main" },
-    { depot_name: "Depot 2", depot_x: 20, depot_y: 15, capacity: 80, max_distance: 60, type: "secondary" }
+    {
+      depot_name: "Depot 1",
+      depot_x: 10,
+      depot_y: 5,
+      capacity: 100,
+      max_distance: 50,
+      type: "main",
+    },
+    {
+      depot_name: "Depot 2",
+      depot_x: 20,
+      depot_y: 15,
+      capacity: 80,
+      max_distance: 60,
+      type: "secondary",
+    },
   ],
   vehicles: [
     { capacity: 50, max_distance: 200 },
-    { capacity: 40, max_distance: 150 }
+    { capacity: 40, max_distance: 150 },
   ],
   customers: [
     { customer_name: "Customer 1", customer_x: 2, customer_y: 8, demand: 10 },
-    { customer_name: "Customer 2", customer_x: 5, customer_y: 12, demand: 15 }
-  ]
+    { customer_name: "Customer 2", customer_x: 5, customer_y: 12, demand: 15 },
+  ],
 };
-
 
 function ScenarioMenu() {
   const [scenarios, setScenarios] = useState([]);
 
   useEffect(() => {
     fetch("http://127.0.0.1:5100/scenarios")
-      .then(res => res.json())
-      .then(data => {setScenarios(data); console.log(data);});
+      .then((res) => res.json())
+      .then((data) => {
+        setScenarios(data);
+        console.log(data);
+      });
   }, []);
 
-function addScenario() {
-  fetch("http://127.0.0.1:5100/scenarios/full", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newScenario),
-  })
-    .then((res) => {
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      return res.json();
+  function addScenario() {
+    fetch("http://127.0.0.1:5100/scenarios/full", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newScenario),
     })
-    .then((data) => {
-      console.log(data);
-      const newEntry = {
-        id: data.scenario.id,
-        name: data.scenario.name,
-        date: data.scenario.date
-      };
-      setScenarios(prev => [...prev, newEntry]);
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        console.log(data);
+        const newEntry = {
+          id: data.scenario.id,
+          name: data.scenario.name,
+          date: data.scenario.date,
+        };
+        setScenarios((prev) => [...prev, newEntry]);
+      })
+      .catch((err) => console.error("Error creating scenario:", err));
+  }
+
+  function removeScenario(id: number) {
+    console.log("Deleting scenario:", id);
+    fetch(`http://127.0.0.1:5100/scenarios`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario_id: id }),
     })
-    .catch((err) => console.error("Error creating scenario:", err));
-}
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          setScenarios(scenarios.filter((s) => s.id !== id));
+        } else {
+          console.error("Failed to delete scenario:", data.error);
+        }
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  }
 
-
-
-function removeScenario(id: number) {
-  console.log("Deleting scenario:", id);
-  fetch(`http://127.0.0.1:5100/scenarios`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ scenario_id: id })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.status === "success") {
-      setScenarios(scenarios.filter((s) => s.id !== id));
-    } else {
-      console.error("Failed to delete scenario:", data.error);
-    }
-  })
-  .catch(err => console.error("Fetch error:", err));
-}
-
-function updateName(id: number, name: string) {
-  console.log("changing Name of ", id + " to " + name);
-  fetch(`http://127.0.0.1:5100/scenarios`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ scenario_id: id, new_name: name })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.status === "success") {
-      setScenarios(
-        scenarios.map((s: any) =>
-          s.id === id ? { ...s, title: name } : s
-        )
-      );
-    } else {
-      console.error("Failed to update scenario:", data.error);
-    }
-  })
-  .catch(err => console.error("Fetch error:", err));
-}
-
-
+  function updateName(id: number, name: string) {
+    console.log("changing Name of ", id + " to " + name);
+    fetch(`http://127.0.0.1:5100/scenarios`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario_id: id, new_name: name }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          setScenarios(
+            scenarios.map((s: any) =>
+              s.id === id ? { ...s, title: name } : s,
+            ),
+          );
+        } else {
+          console.error("Failed to update scenario:", data.error);
+        }
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  }
 
   // function deleteAll() {
   //   fetch(`http://127.0.0.1:5000/reset-database`, { method: "POST" });
   //   setScenarios([]);
   // }
-
 
   return (
     <Container fluid className="px-5 py-5">
@@ -157,4 +168,3 @@ function updateName(id: number, name: string) {
 }
 
 export default ScenarioMenu;
-

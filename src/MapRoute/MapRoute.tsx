@@ -1,5 +1,5 @@
 // MapRoute.tsx
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -9,11 +9,18 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { FaArrowRight, FaArrowLeft, FaPlus, FaTimes, FaHouseUser } from "react-icons/fa";
+import {
+  FaArrowRight,
+  FaArrowLeft,
+  FaPlus,
+  FaTimes,
+  FaHouseUser,
+} from "react-icons/fa";
 import { Modal, Button, Form } from "react-bootstrap";
 import "./MapRoute.css";
 import { Link } from "react-router-dom";
 import type { Customer, Depot, Vehicle } from "../types";
+import { useParams } from "react-router-dom";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -38,7 +45,6 @@ const ZoomTopRight = () => {
   return null;
 };
 
-
 const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [isOverlayOpen, setIsOverlayOpen] = useState(true);
@@ -49,12 +55,39 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
   const [depots, setDepots] = useState<Depot[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
+  const { id } = useParams<{ id: string }>();
+  const scenarioId = parseInt(id, 10);
+
+  useEffect(() => {
+    console.log("id: ", id);
+    fetch("http://127.0.0.1:5100/scenarios_by_id", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario_id: scenarioId }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setCustomers(data.customers);
+        setDepots(data.depots);
+        setVehicles(data.vehicles);
+      })
+      .catch((err) => {
+        console.error("Fetch error:", err);
+      });
+  }, []);
+
+  useEffect(() => {
+    console.log("Customers: !!", customers);
+    console.log("Depots: !!", depots);
+    console.log("Vehicles: !!", vehicles);
+  })
+
   // Input states for modal
   const [customerInput, setCustomerInput] = useState({
-    x: 0,
-    y: 0,
+    customer_x: 0,
+    customer_y: 0,
     demand: 0,
-    name: "",
+    customer_name: "",
   });
   const [depotInput, setDepotInput] = useState({
     name: "",
@@ -101,10 +134,20 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
 
   // Handlers
   const addCustomer = () => {
-    setCustomers([...customers, { id: Date.now(), ...customerInput }]);
-    setCustomerInput({ x: 0, y: 0, demand: 0, name: "" });
-    setShowModal(null);
+    fetch("http://127.0.0.1:5100/customers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({...customerInput, scenario_id: scenarioId}),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setCustomers([...customers, data]);
+        setCustomerInput({ customer_x: 0, customer_y: 0, demand: 0, customer_name: "" });
+        setShowModal(null);
+      })
+      .catch((err) => console.error("Failed to add customer:", err));
   };
+
 
   const addDepot = () => {
     setDepots([...depots, { id: Date.now(), ...depotInput }]);
@@ -148,114 +191,120 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
           transition: "left 0.3s",
         }}
         className="m-4 rounded-5 p-5"
-        >
-          <div className="d-flex justify-content-between align-items-center"> 
-            <h1 className="fw-bold fs-2 mb-5">Parameters</h1>
+      >
+        <div className="d-flex justify-content-between align-items-center">
+          <h1 className="fw-bold fs-2 mb-5">Parameters</h1>
+        </div>
+        <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 300px)" }}>
+          {" "}
+          {/* TEST */}
+          {/* Customers Section */}
+          <div className="section-header">
+            <h4 className="fw-bold">Customers</h4>
+            <button
+              className="button-circle"
+              onClick={() => setShowModal("customer")}
+            >
+              <FaPlus />
+            </button>
           </div>
-          <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 300px)" }}> {/* TEST */}
-        {/* Customers Section */}
-        <div className="section-header">
-        <h4 className="fw-bold">Customers</h4>
-          <button
-            className="button-circle"
-            onClick={() => setShowModal("customer")}
-          >
-            <FaPlus />
-          </button>
+          <hr className="w-100 mb-4" />
+          <ul className="list">
+            {customers.map((c) => (
+              // console.log("-------", c),
+              <li key={c.id} className="list-item">
+                <div>
+                  <strong>{c.name}</strong> ({c.x}, {c.y}) - Demand: {c.demand}
+                </div>
+                <div className="delete-btn-wrapper">
+                  <button
+                    className="delete-btn button-circle"
+                    onClick={() => removeCustomer(c.id)}
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {/* Depots Section */}
+          <div className="section-header">
+            <h4 className="fw-bold">Depots</h4>
+            <button
+              className="button-circle"
+              onClick={() => setShowModal("depot")}
+            >
+              <FaPlus />
+            </button>
+          </div>
+          <hr className="w-100 mb-4" />
+          <ul className="list">
+            {depots.map((d) => (
+              <li key={d.id} className="list-item">
+                <div>
+                  <strong>{d.name}</strong> ({d.lat}, {d.lng}) - Capacity:{" "}
+                  {d.capacity}, MaxDist: {d.maxDistance}, Type: {d.type}
+                </div>
+                <div className="delete-btn-wrapper">
+                  <button
+                    className="delete-btn button-circle"
+                    onClick={() => removeDepot(d.id)}
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {/* Vehicles Section */}
+          <div className="section-header">
+            <h4 className="fw-bold"> Vehicles</h4>
+            <button
+              className="button-circle"
+              onClick={() => setShowModal("vehicle")}
+            >
+              <FaPlus />
+            </button>
+          </div>
+          <ul className="list">
+            {vehicles.map((v) => (
+              <li key={v.id} className="list-item">
+                <div>
+                  Capacity: {v.capacity}, MaxDist: {v.maxDistance}
+                </div>
+                <div className="delete-btn-wrapper">
+                  <button
+                    className="delete-btn button-circle"
+                    onClick={() => removeVehicle(v.id)}
+                  >
+                    <FaTimes size={12} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-            <hr className="w-100 mb-4"/>
-        <ul className="list">
-          {customers.map((c) => (
-            <li key={c.id} className="list-item">
-              <div>
-                <strong>{c.name}</strong> ({c.x}, {c.y}) - Demand: {c.demand}
-              </div>
-              <div className="delete-btn-wrapper">
-                <button
-                  className="delete-btn button-circle"
-                  onClick={() => removeCustomer(c.id)}
-                >
-                  <FaTimes size={12} />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        {/* Depots Section */}
-        <div className="section-header">
-          <h4 className="fw-bold">Depots</h4>
-          <button
-            className="button-circle"
-            onClick={() => setShowModal("depot")}
+        <div className="d-flex justify-content-center align-items-center ms-4">
+          <Button
+            variant="primary"
+            className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 w-100 mt-1 mb-4 button-circle"
+            style={{
+              bottom: "0px",
+              right: "20px",
+              paddingBottom: "40px !important",
+              paddingTop: "10px !important",
+              maxWidth: "200px",
+            }}
           >
-            <FaPlus />
-          </button>
+            <span className="me-3">Save</span>
+            <span
+              className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
+              style={{ width: "32px", height: "32px" }}
+            >
+              <FaArrowRight size={14} />
+            </span>
+          </Button>
         </div>
-        <hr className="w-100 mb-4"/>
-        <ul className="list">
-          {depots.map((d) => (
-            <li key={d.id} className="list-item">
-              <div>
-                <strong>{d.name}</strong> ({d.lat}, {d.lng}) - Capacity:{" "}
-                {d.capacity}, MaxDist: {d.maxDistance}, Type: {d.type}
-              </div>
-              <div className="delete-btn-wrapper">
-                <button
-                  className="delete-btn button-circle"
-                  onClick={() => removeDepot(d.id)}
-                >
-                  <FaTimes size={12} />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        {/* Vehicles Section */}
-        <div className="section-header">
-          <h4 className="fw-bold"> Vehicles</h4>
-          <button
-            className="button-circle"
-            onClick={() => setShowModal("vehicle")}
-          >
-            <FaPlus />
-          </button>
-        </div>
-        <ul className="list">
-          {vehicles.map((v) => (
-            <li key={v.id} className="list-item">
-              <div>
-                Capacity: {v.capacity}, MaxDist: {v.maxDistance}
-              </div>
-              <div className="delete-btn-wrapper">
-                <button
-                  className="delete-btn button-circle"
-                  onClick={() => removeVehicle(v.id)}
-                >
-                  <FaTimes size={12} />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-  
-  </div>
-<div className="d-flex justify-content-center align-items-center ms-4">
-        <Button
-  variant="primary"
-  className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 w-100 mt-1 mb-4 button-circle"
-  style={{ bottom: "0px", right: "20px", paddingBottom: "40px !important", paddingTop: "10px !important", maxWidth: "200px" }}
->
-  <span className="me-3">Save</span>
-  <span
-    className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
-    style={{ width: "32px", height: "32px" }}
-    >
-    <FaArrowRight size={14} />
-  </span>
-</Button>
-    </div>
       </div>
       <div
         style={{
@@ -296,7 +345,9 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
           <FaPlus />
         </button>
 
-        <p className="text-custom-color-grey-lighter fw-bold fs-3 m-0 ps-2">{title}</p>
+        <p className="text-custom-color-grey-lighter fw-bold fs-3 m-0 ps-2">
+          {title}
+        </p>
       </div>
       <Link to="/">
         <div
@@ -374,11 +425,9 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
         className="decoration-none bg-white rounded-circle d-flex justify-content-center align-items-center border-0 button-circle"
       >
         {isOverlayOpenPlus ? (
-                    <FaArrowRight size={14} color="#0d6efd" />
-
+          <FaArrowRight size={14} color="#0d6efd" />
         ) : (
-                    <FaArrowLeft size={14} color="#0d6efd" />
-
+          <FaArrowLeft size={14} color="#0d6efd" />
         )}
       </button>
 
@@ -414,19 +463,19 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
                 <Form.Label>Name</Form.Label>
                 <Form.Control
                   type="text"
-                  value={customerInput.name}
+                  value={customerInput.customer_name}
                   onChange={(e) =>
-                    setCustomerInput({ ...customerInput, name: e.target.value })
+                    setCustomerInput({ ...customerInput, customer_name: e.target.value })
                   }
                 />
                 <Form.Label>X</Form.Label>
                 <Form.Control
                   type="number"
-                  value={customerInput.x}
+                  value={customerInput.customer_x}
                   onChange={(e) =>
                     setCustomerInput({
                       ...customerInput,
-                      x: Number(e.target.value),
+                      customer_x: Number(e.target.value),
                     })
                   }
                 />
@@ -435,11 +484,11 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
                 <Form.Label>Y</Form.Label>
                 <Form.Control
                   type="number"
-                  value={customerInput.y}
+                  value={customerInput.customer_y}
                   onChange={(e) =>
                     setCustomerInput({
                       ...customerInput,
-                      y: Number(e.target.value),
+                      customer_y: Number(e.target.value),
                     })
                   }
                 />
@@ -576,8 +625,8 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
               if (showModal === "depot") addDepot();
               if (showModal === "vehicle") addVehicle();
             }}
-            className="rounded-pill button-circle bg-custom-color-grey-lighter mx-1 px-5 py-4"         
-             >
+            className="rounded-pill button-circle bg-custom-color-grey-lighter mx-1 px-5 py-4"
+          >
             Add
           </Button>
         </Modal.Footer>

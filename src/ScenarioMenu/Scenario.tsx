@@ -1,6 +1,6 @@
 import { Container, Row, Col, Button, Form } from "react-bootstrap";
 import { FaTimes } from "react-icons/fa";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import "./Scenario.css";
 import { Link } from "react-router-dom";
 import type { Customer, Depot, Vehicle } from "../types";
@@ -19,33 +19,12 @@ function Scenario({
   id: number;
 }) {
   const [editableTitle, setEditableTitle] = useState(title);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [depots, setDepots] = useState<Depot[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   const handleBlur = () => {
     if (editableTitle !== title) {
       updateName(id, editableTitle);
     }
   };
-
-
-  useEffect(() => {
-      fetch("http://127.0.0.1:5100/scenarios_by_id", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ scenario_id: id })
-        }).then(res => res.json())
-        .then(data => {
-          setCustomers(data.customers);
-          setDepots(data.depots);
-          setVehicles(data.vehicles);
-        })
-        .catch(err => {
-          console.error("Fetch error:", err);
-        })
-        console.log(customers);
-  }, [id]);
 
 
   return (
