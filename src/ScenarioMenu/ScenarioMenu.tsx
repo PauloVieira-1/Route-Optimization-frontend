@@ -1,45 +1,91 @@
 import { Container, Row, Col, Button } from "react-bootstrap";
 import { FaPlus } from "react-icons/fa";
 import Scenario from "./Scenario";
-import { useState } from "react";
-import MapRoute from "../MapRoute/MapRoute";
+import { useEffect, useState } from "react";
 
-interface ScenarioInterface {
-  id: number;
-  title: string;
-  date: string;
+function getCurrentDate() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-const Scenarios: ScenarioInterface[] = [
-  { id: 1, title: "Scenario 1", date: "21/02/2023" },
-  { id: 2, title: "Scenario 2", date: "20/02/2023" },
-  { id: 3, title: "Scenario 3", date: "19/02/2023" },
-];
+const newScenario = {
+  name: "Scenario A",
+  date: getCurrentDate(),
+  depots: [
+    { depot_name: "Depot 1", depot_x: 10, depot_y: 5, capacity: 100, max_distance: 50, type: "main" },
+    { depot_name: "Depot 2", depot_x: 20, depot_y: 15, capacity: 80, max_distance: 60, type: "secondary" }
+  ],
+  vehicles: [
+    { capacity: 50, max_distance: 200 },
+    { capacity: 40, max_distance: 150 }
+  ],
+  customers: [
+    { customer_name: "Customer 1", customer_x: 2, customer_y: 8, demand: 10 },
+    { customer_name: "Customer 2", customer_x: 5, customer_y: 12, demand: 15 }
+  ]
+};
+
 
 function ScenarioMenu() {
-  const [scenarios, setScenarios] = useState(Scenarios);
+  const [scenarios, setScenarios] = useState([]);
 
-  // Set width as a variable for easy changes
-  const scenarioWidth = 400; // width in px
+  useEffect(() => {
+    fetch("http://127.0.0.1:5000/scenarios")
+      .then(res => res.json())
+      .then(data => setScenarios(data));
+  }, []);
 
-  function addScenario() {
-    const newId = Math.max(...scenarios.map((s) => s.id)) + 1;
-    setScenarios([
-      ...scenarios,
-      { id: newId, title: `Scenario ${newId}`, date: getDateTime(new Date()) },
-    ]);
+function addScenario() {
+  fetch("http://127.0.0.1:5000/scenarios/full", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newScenario),
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return res.json();
+    })
+    .then((data) => {
+      const newEntry = {
+        id: data.scenario.id,
+        title: data.scenario.name,
+        date: data.scenario.date
+      };
+      setScenarios(prev => [...prev, newEntry]);
+    })
+    .catch((err) => console.error("Error creating scenario:", err));
+}
+
+
+
+function removeScenario(id: number) {
+  console.log("Deleting scenario:", id);
+  fetch(`http://127.0.0.1:5000/scenarios`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scenario_id: id })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === "success") {
+      setScenarios(scenarios.filter((s) => s.id !== id));
+    } else {
+      console.error("Failed to delete scenario:", data.error);
+    }
+  })
+  .catch(err => console.error("Fetch error:", err));
+}
+
+
+
+  function deleteAll() {
+    fetch(`http://127.0.0.1:5000/reset-database`, { method: "POST" });
+    setScenarios([]);
   }
 
-  function removeScenario(id: number) {
-    setScenarios(scenarios.filter((s) => s.id !== id));
-  }
-
-  function getDateTime(date: Date) {
-    const day = date.getDate();
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
 
   return (
     <Container fluid className="px-5 py-5">
@@ -59,20 +105,20 @@ function ScenarioMenu() {
         </Col>
         <hr className="my-4" />
       </Row>
-
-      {/* Flex container for scenarios with wrapping */}
       <Row
         className="align-items-start justify-content-center"
         style={{ display: "flex", flexWrap: "wrap", gap: "40px" }}
       >
         {scenarios.length > 0 ? (
-          scenarios.map((scenario) => (
-            <div key={scenario.id} style={{ width: `${scenarioWidth}px` }}>
+          scenarios.map((scenario: any) => (
+            console.log(scenario),
+            <div key={scenario.id} style={{ width: "400px" }}>
               <Scenario
-                title={scenario.title}
+                title={scenario.name}
                 date={scenario.date}
                 removeScenario={removeScenario}
                 id={scenario.id}
+                key={scenario.id}
               />
             </div>
           ))
@@ -80,6 +126,9 @@ function ScenarioMenu() {
           <p className="text-muted">No scenarios found</p>
         )}
       </Row>
+      {/* <Row>
+        <button className="btn btn-danger" onClick={deleteAll}>DELETE ALL</button>
+      </Row> */}
     </Container>
   );
 }

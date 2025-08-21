@@ -18,12 +18,12 @@ function Scenario({
   const [editableTitle, setEditableTitle] = useState(title);
 
   return (
-    <Link to={`/scenario/${id}`} className="text-decoration-none">
-      <Container
+    <Container
         fluid
         className="scenario-container p-0 rounded-4 shadow-sm mx-1"
         style={{ width: "400px", overflow: "hidden", position: "relative" }}
       >
+    <Link to={`/scenario/${id}`} className="text-decoration-none">
         <Row
           className="bg-custom-color-grey-lighter rounded-top-4"
           style={{ height: "170px" }}
@@ -47,13 +47,17 @@ function Scenario({
         >
           <FaTimes size={12} />
         </Button>
-
+    </Link>
         <Row className="align-items-center p-3">
           <Col className="d-flex flex-column">
             <Form.Control
               type="text"
               value={editableTitle}
-              onChange={(e) => setEditableTitle(e.target.value)}
+              onChange={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setEditableTitle(e.target.value);
+              }}
               className="mb-1 fw-bold fs-4 text-custom-color-grey-lighter"
               style={{
                 border: "none",
@@ -63,9 +67,8 @@ function Scenario({
             />
             <p className="text-muted mb-0">{date}</p>
           </Col>
-        </Row>
+        </Row> 
       </Container>
-    </Link>
   );
 }
 
