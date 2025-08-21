@@ -1,8 +1,8 @@
 interface Customer {
   id: number;
-  name: string;
-  x: number;
-  y: number;
+  customer_name: string;
+  customer_x: number;
+  customer_y: number;
   demand: number;
 }
 

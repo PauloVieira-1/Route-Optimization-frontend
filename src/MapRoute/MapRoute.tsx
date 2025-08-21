@@ -34,7 +34,6 @@ L.Icon.Default.mergeOptions({
 
 interface MapRouteProps {
   points: [number, number][];
-  title: string;
 }
 
 const ZoomTopRight = () => {
@@ -45,10 +44,11 @@ const ZoomTopRight = () => {
   return null;
 };
 
-const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
+const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [isOverlayOpen, setIsOverlayOpen] = useState(true);
   const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
+  const [title, setTitle] = useState("Scenario");
 
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -70,6 +70,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
         setCustomers(data.customers);
         setDepots(data.depots);
         setVehicles(data.vehicles);
+        setTitle(data.name);
       })
       .catch((err) => {
         console.error("Fetch error:", err);
@@ -80,7 +81,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
     console.log("Customers: !!", customers);
     console.log("Depots: !!", depots);
     console.log("Vehicles: !!", vehicles);
-  })
+  });
 
   // Input states for modal
   const [customerInput, setCustomerInput] = useState({
@@ -132,22 +133,46 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
     fetchRoute();
   }, [points]);
 
-  // Handlers
+  ///////////////
+  // CUSTOMERS //
+  ///////////////
+
   const addCustomer = () => {
     fetch("http://127.0.0.1:5100/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({...customerInput, scenario_id: scenarioId}),
+      body: JSON.stringify({ ...customerInput, scenario_id: scenarioId }),
     })
       .then((res) => res.json())
       .then((data) => {
         setCustomers([...customers, data]);
-        setCustomerInput({ customer_x: 0, customer_y: 0, demand: 0, customer_name: "" });
+        setCustomerInput({
+          customer_x: 0,
+          customer_y: 0,
+          demand: 0,
+          customer_name: "",
+        });
         setShowModal(null);
       })
       .catch((err) => console.error("Failed to add customer:", err));
   };
 
+  const removeCustomer = (id: number) => {
+    fetch(`http://127.0.0.1:5100/customers`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          setCustomers(customers.filter((c) => c.id !== id));
+        } else {
+          console.error("Failed to delete customer:", data.error);
+        }
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
 
   const addDepot = () => {
     setDepots([...depots, { id: Date.now(), ...depotInput }]);
@@ -168,8 +193,6 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
     setShowModal(null);
   };
 
-  const removeCustomer = (id: number) =>
-    setCustomers(customers.filter((c) => c.id !== id));
   const removeDepot = (id: number) =>
     setDepots(depots.filter((d) => d.id !== id));
   const removeVehicle = (id: number) =>
@@ -181,7 +204,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
       <div
         style={{
           position: "absolute",
-          left: isOverlayOpen ? 0 : -300,
+          left: isOverlayOpen ? 0 : -350,
           top: 0,
           bottom: 0,
           width: "300px",
@@ -210,11 +233,12 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
           </div>
           <hr className="w-100 mb-4" />
           <ul className="list">
-            {customers.map((c) => (
+            {customers?.map((c) => (
               // console.log("-------", c),
               <li key={c.id} className="list-item">
                 <div>
-                  <strong>{c.name}</strong> ({c.x}, {c.y}) - Demand: {c.demand}
+                  <strong>{c.customer_name}</strong> ({c.customer_x},{" "}
+                  {c.customer_y}) - Demand: {c.demand}
                 </div>
                 <div className="delete-btn-wrapper">
                   <button
@@ -239,7 +263,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
           </div>
           <hr className="w-100 mb-4" />
           <ul className="list">
-            {depots.map((d) => (
+            {depots?.map((d) => (
               <li key={d.id} className="list-item">
                 <div>
                   <strong>{d.name}</strong> ({d.lat}, {d.lng}) - Capacity:{" "}
@@ -267,7 +291,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
             </button>
           </div>
           <ul className="list">
-            {vehicles.map((v) => (
+            {vehicles?.map((v) => (
               <li key={v.id} className="list-item">
                 <div>
                   Capacity: {v.capacity}, MaxDist: {v.maxDistance}
@@ -394,7 +418,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
         style={{
           position: "absolute",
           top: "30px",
-          left: isOverlayOpen ? "350px" : "50px",
+          left: isOverlayOpen ? "350px" : "25px",
           width: "50px",
           height: "50px",
           cursor: "pointer",
@@ -465,7 +489,10 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
                   type="text"
                   value={customerInput.customer_name}
                   onChange={(e) =>
-                    setCustomerInput({ ...customerInput, customer_name: e.target.value })
+                    setCustomerInput({
+                      ...customerInput,
+                      customer_name: e.target.value,
+                    })
                   }
                 />
                 <Form.Label>X</Form.Label>

@@ -14,32 +14,9 @@ function getCurrentDate() {
 const newScenario = {
   name: "Title",
   date: getCurrentDate(),
-  depots: [
-    {
-      depot_name: "Depot 1",
-      depot_x: 10,
-      depot_y: 5,
-      capacity: 100,
-      max_distance: 50,
-      type: "main",
-    },
-    {
-      depot_name: "Depot 2",
-      depot_x: 20,
-      depot_y: 15,
-      capacity: 80,
-      max_distance: 60,
-      type: "secondary",
-    },
-  ],
-  vehicles: [
-    { capacity: 50, max_distance: 200 },
-    { capacity: 40, max_distance: 150 },
-  ],
-  customers: [
-    { customer_name: "Customer 1", customer_x: 2, customer_y: 8, demand: 10 },
-    { customer_name: "Customer 2", customer_x: 5, customer_y: 12, demand: 15 },
-  ],
+  depots: [],
+  vehicles: [],
+  customers: [],
 };
 
 function ScenarioMenu() {
