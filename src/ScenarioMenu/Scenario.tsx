@@ -8,14 +8,22 @@ function Scenario({
   title,
   date,
   removeScenario,
+  updateName,
   id,
 }: {
   title: string;
   date: string;
   removeScenario: (id: number) => void;
+  updateName: (id: number, name: string) => void;
   id: number;
 }) {
   const [editableTitle, setEditableTitle] = useState(title);
+
+  const handleBlur = () => {
+    if (editableTitle !== title) {
+      updateName(id, editableTitle);
+    }
+  };
 
   return (
     <Container
@@ -58,6 +66,7 @@ function Scenario({
                 e.stopPropagation();
                 setEditableTitle(e.target.value);
               }}
+              onBlur={handleBlur}
               className="mb-1 fw-bold fs-4 text-custom-color-grey-lighter"
               style={{
                 border: "none",
@@ -73,3 +82,4 @@ function Scenario({
 }
 
 export default Scenario;
+

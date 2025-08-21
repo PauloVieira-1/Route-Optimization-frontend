@@ -64,6 +64,7 @@ interface Vehicle {
 const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [isOverlayOpen, setIsOverlayOpen] = useState(true);
+  const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
 
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -167,13 +168,13 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
           zIndex: 1000,
           padding: "10px",
           transition: "left 0.3s",
-          overflowY: "auto",
         }}
         className="m-4 rounded-5 p-5"
         >
           <div className="d-flex justify-content-between align-items-center"> 
             <h1 className="fw-bold fs-2 mb-5">Parameters</h1>
           </div>
+          <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 300px)" }}> {/* TEST */}
         {/* Customers Section */}
         <div className="section-header">
         <h4 className="fw-bold">Customers</h4>
@@ -260,12 +261,13 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
             </li>
           ))}
         </ul>
-
-<div className="d-flex justify-content-end align-items-end ms-4">
+  
+  </div>
+<div className="d-flex justify-content-center align-items-center ms-4">
         <Button
   variant="primary"
-  className="fw-bold fs-5 position- rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 w-100 mt-5 button-circle"
-  style={{ bottom: "0px", right: "20px", minWidth: "200px", paddingBottom: "40px !important", paddingTop: "10px !important" }}
+  className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 w-100 mt-1 mb-4 button-circle"
+  style={{ bottom: "0px", right: "20px", paddingBottom: "40px !important", paddingTop: "10px !important", maxWidth: "200px" }}
 >
   <span className="me-3">Save</span>
   <span
@@ -280,7 +282,6 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
       <div
         style={{
           position: "absolute",
-          right: 0,
           bottom: 0,
           width: "400px",
           backgroundColor: "rgba(255, 255, 255, 0.9)",
@@ -290,8 +291,8 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
           height: "65px",
           display: "flex",
           alignItems: "center",
-          justifyContent: "left",
           gap: "10px",
+          right: isOverlayOpenPlus ? "0px" : "-500px",
         }}
         className="m-4 rounded-4 py-4 px-3 rounded-pill"
       >
@@ -309,6 +310,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
             alignItems: "center",
             justifyContent: "center",
             fontSize: "18px",
+            transition: "all 0.3s",
           }}
           onClick={() => console.log("Plus button clicked")}
           className="button-circle "
@@ -330,7 +332,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
             transition: "all 0.3s",
             display: "flex",
             alignItems: "center",
-            justifyContent: "left",
+            justifyContent: "center",
             gap: "10px",
           }}
           className="m-4 rounded-4 py-2 px-2 rounded-pill"
@@ -379,10 +381,33 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
         )}
       </button>
 
+      <button
+        onClick={() => setIsOverlayOpenPlus(!isOverlayOpenPlus)}
+        style={{
+          position: "absolute",
+          bottom: "30px",
+          right: isOverlayOpenPlus ? "440px" : "30px",
+          width: "50px",
+          height: "50px",
+          cursor: "pointer",
+          zIndex: 1100,
+          transition: "all 0.3s",
+        }}
+        className="decoration-none bg-white rounded-circle d-flex justify-content-center align-items-center border-0 button-circle"
+      >
+        {isOverlayOpenPlus ? (
+                    <FaArrowRight size={14} color="#0d6efd" />
+
+        ) : (
+                    <FaArrowLeft size={14} color="#0d6efd" />
+
+        )}
+      </button>
+
       {/* Map */}
       <MapContainer
-        center={[0, 0]}
-        zoom={2}
+        center={points[0]}
+        zoom={7}
         style={{ height: "100%", width: "100%" }}
       >
         <ZoomTopRight />

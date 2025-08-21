@@ -12,7 +12,7 @@ function getCurrentDate() {
 }
 
 const newScenario = {
-  name: "Scenario A",
+  name: "Title",
   date: getCurrentDate(),
   depots: [
     { depot_name: "Depot 1", depot_x: 10, depot_y: 5, capacity: 100, max_distance: 50, type: "main" },
@@ -35,7 +35,7 @@ function ScenarioMenu() {
   useEffect(() => {
     fetch("http://127.0.0.1:5000/scenarios")
       .then(res => res.json())
-      .then(data => setScenarios(data));
+      .then(data => {setScenarios(data); console.log(data);});
   }, []);
 
 function addScenario() {
@@ -49,9 +49,10 @@ function addScenario() {
       return res.json();
     })
     .then((data) => {
+      console.log(data);
       const newEntry = {
         id: data.scenario.id,
-        title: data.scenario.name,
+        name: data.scenario.name,
         date: data.scenario.date
       };
       setScenarios(prev => [...prev, newEntry]);
@@ -79,12 +80,34 @@ function removeScenario(id: number) {
   .catch(err => console.error("Fetch error:", err));
 }
 
+function updateName(id: number, name: string) {
+  console.log("changing Name of ", id + " to " + name);
+  fetch(`http://127.0.0.1:5000/scenarios`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ scenario_id: id, new_name: name })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === "success") {
+      setScenarios(
+        scenarios.map((s: any) =>
+          s.id === id ? { ...s, title: name } : s
+        )
+      );
+    } else {
+      console.error("Failed to update scenario:", data.error);
+    }
+  })
+  .catch(err => console.error("Fetch error:", err));
+}
 
 
-  function deleteAll() {
-    fetch(`http://127.0.0.1:5000/reset-database`, { method: "POST" });
-    setScenarios([]);
-  }
+
+  // function deleteAll() {
+  //   fetch(`http://127.0.0.1:5000/reset-database`, { method: "POST" });
+  //   setScenarios([]);
+  // }
 
 
   return (
@@ -111,12 +134,12 @@ function removeScenario(id: number) {
       >
         {scenarios.length > 0 ? (
           scenarios.map((scenario: any) => (
-            console.log(scenario),
             <div key={scenario.id} style={{ width: "400px" }}>
               <Scenario
                 title={scenario.name}
                 date={scenario.date}
                 removeScenario={removeScenario}
+                updateName={updateName}
                 id={scenario.id}
                 key={scenario.id}
               />
