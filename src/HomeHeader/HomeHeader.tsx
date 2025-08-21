@@ -19,10 +19,10 @@ function HomeHeader() {
           </p>
         </Col>
       </Row>
-<Button
+        <Button
   variant="primary"
-  className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-2"
-  style={{ bottom: "20px", right: "20px", minWidth: "200px" }}
+  className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 button-circle"
+  style={{ bottom: "20px", right: "20px", minWidth: "200px", paddingBottom: "40px !important", paddingTop: "10px !important" }}
 >
   <span className="me-3">Learn More</span>
   <span

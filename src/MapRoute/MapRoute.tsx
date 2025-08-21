@@ -261,19 +261,21 @@ const MapRoute: React.FC<MapRouteProps> = ({ points, title }) => {
           ))}
         </ul>
 
+<div className="d-flex justify-content-center align-items-center ms-4">
         <Button
   variant="primary"
-  className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 button-circle"
-  style={{ bottom: "20px", right: "20px", minWidth: "200px", paddingBottom: "40px !important", paddingTop: "10px !important" }}
+  className="fw-bold fs-5 position-relative rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 w-100 mt-3 button-circle"
+  style={{ bottom: "0px", right: "20px", minWidth: "200px", paddingBottom: "40px !important", paddingTop: "10px !important" }}
 >
   <span className="me-3">Save</span>
   <span
     className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
     style={{ width: "32px", height: "32px" }}
-  >
+    >
     <FaArrowRight size={14} />
   </span>
 </Button>
+    </div>
       </div>
       <div
         style={{
