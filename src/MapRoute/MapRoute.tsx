@@ -7,7 +7,7 @@ import {
   Polyline,
   useMap,
 } from "react-leaflet";
-import L from "leaflet";
+import L, { icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   FaArrowRight,
@@ -27,6 +27,9 @@ import {
   getLatLng,
   getLngLat,
   getFirstLatLng,
+  redIcon,
+  blueIcon,
+  getLatLngDepot,
 } from "./utiities";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -73,6 +76,15 @@ const MapRoute = () => {
     [customers],
   );
 
+  const validDepots = useMemo(
+    () =>
+      depots.filter(
+        (d) => d.depot_x !== undefined && d.depot_y !== undefined,
+      ),
+    [depots],
+  );
+
+
   useEffect(() => {
     fetch("http://127.0.0.1:5100/scenarios_by_id", {
       method: "POST",
@@ -104,9 +116,9 @@ const MapRoute = () => {
     customer_name: "",
   });
   const [depotInput, setDepotInput] = useState({
-    name: "",
-    lat: 0,
-    lng: 0,
+    depot_name: "",
+    depot_x: 0,
+    depot_y: 0,
     capacity: 0,
     maxDistance: 0,
     type: "",
@@ -225,9 +237,9 @@ const MapRoute = () => {
       .then((data) => {
         setDepots([...depots, { ...data, id: current_id }]);
         setDepotInput({
-          name: "",
-          lat: 0,
-          lng: 0,
+          depot_name: "",
+          depot_x: 0,
+          depot_y: 0,
           capacity: 0,
           maxDistance: 0,
           type: "",
@@ -372,7 +384,7 @@ const MapRoute = () => {
             {depots?.map((d) => (
               <li key={d.id} className="list-item">
                 <div>
-                  <strong>{d.name}</strong> ({d.lat}, {d.lng}) - Capacity:{" "}
+                  <strong>{d.depot_name}</strong> ({d.depot_x}, {d.depot_y}) - Capacity:{" "}
                   {d.capacity}, MaxDist: {d.maxDistance}, Type: {d.type}
                 </div>
                 <div className="delete-btn-wrapper">
@@ -573,8 +585,10 @@ const MapRoute = () => {
           <Polyline positions={routeCoords} color="blue" />
         )}
         {validCustomers.map((c) => (
-          <Marker key={c.id} position={getLatLng(c)} />
-          //icon={customerIcon}
+          <Marker key={c.id} position={getLatLng(c)}  icon={redIcon}/>          
+        ))}
+        {validDepots.map((d) => (
+          <Marker key={d.id} position={getLatLngDepot(d)}  icon={blueIcon}/>
         ))}
         <RecenterMap center={center} />
       </MapContainer>
@@ -654,34 +668,34 @@ const MapRoute = () => {
                 <Form.Label>Name</Form.Label>
                 <Form.Control
                   type="text"
-                  value={depotInput.name}
+                  value={depotInput.depot_name}
                   onChange={(e) =>
-                    setDepotInput({ ...depotInput, name: e.target.value })
+                    setDepotInput({ ...depotInput, depot_name: e.target.value })
                   }
                 />
               </Form.Group>
               <Form.Group className="mb-2">
-                <Form.Label>Latitude</Form.Label>
+                <Form.Label>x</Form.Label>
                 <Form.Control
                   type="number"
-                  value={depotInput.lat}
+                  value={depotInput.depot_x}
                   onChange={(e) =>
                     setDepotInput({
                       ...depotInput,
-                      lat: Number(e.target.value),
+                      depot_x: Number(e.target.value),
                     })
                   }
                 />
               </Form.Group>
               <Form.Group className="mb-2">
-                <Form.Label>Longitude</Form.Label>
+                <Form.Label>y</Form.Label>
                 <Form.Control
                   type="number"
-                  value={depotInput.lng}
+                  value={depotInput.depot_y}
                   onChange={(e) =>
                     setDepotInput({
                       ...depotInput,
-                      lng: Number(e.target.value),
+                      depot_y: Number(e.target.value),
                     })
                   }
                 />

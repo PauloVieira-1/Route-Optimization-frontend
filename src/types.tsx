@@ -8,9 +8,9 @@ interface Customer {
 
 interface Depot {
   id: number;
-  name: string;
-  lat: number;
-  lng: number;
+  depot_name: string;
+  depot_x: number;
+  depot_y: number;
   capacity: number;
   maxDistance: number;
   type: string;

@@ -15,16 +15,31 @@ const get_date_time = () => {
   return `${year}${month}${day}${hours}${minutes}${seconds}`;
 };
 
-const customerIcon = new L.Icon({
+const redIcon = new L.Icon({
   iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
   shadowSize: [41, 41],
   shadowAnchor: [12, 41],
-  color: "red",
 });
+
+const blueIcon = new L.Icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  shadowSize: [41, 41],
+  shadowAnchor: [12, 41],
+});
+
+
 
 const ZoomTopRight = () => {
   const map = useMap();
@@ -50,7 +65,15 @@ const getLngLat = (c: {
   c.customer_x, // latitude
 ];
 
-const getFirstLatLng = (customers: Customer[]): [number, number] => {
+const getLatLngDepot = (c: {
+  depot_x: number;
+  depot_y: number;
+}): LatLngTuple => ({
+  lat: c.depot_x, // latitude
+  lng: c.depot_y, // longitude
+})
+
+const getFirstLatLng = (customers: Customer[] ): [number, number] => {
   if (customers.length === 0) {
     return [54.526, 18.5318];
   }
@@ -59,9 +82,11 @@ const getFirstLatLng = (customers: Customer[]): [number, number] => {
 
 export {
   get_date_time,
-  customerIcon,
+  redIcon,
+  blueIcon,
   ZoomTopRight,
   getLatLng,
   getLngLat,
   getFirstLatLng,
+  getLatLngDepot
 };
