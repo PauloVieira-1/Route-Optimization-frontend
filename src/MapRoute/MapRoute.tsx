@@ -30,7 +30,7 @@ import {
   redIcon,
   blueIcon,
   getLatLngDepot,
-  getCostMatrix
+  getCostMatrix,
 } from "./utiities";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -79,12 +79,9 @@ const MapRoute = () => {
 
   const validDepots = useMemo(
     () =>
-      depots.filter(
-        (d) => d.depot_x !== undefined && d.depot_y !== undefined,
-      ),
+      depots.filter((d) => d.depot_x !== undefined && d.depot_y !== undefined),
     [depots],
   );
-
 
   useEffect(() => {
     fetch("http://127.0.0.1:5100/scenarios_by_id", {
@@ -385,8 +382,9 @@ const MapRoute = () => {
             {depots?.map((d) => (
               <li key={d.id} className="list-item">
                 <div>
-                  <strong>{d.depot_name}</strong> ({d.depot_x}, {d.depot_y}) - Capacity:{" "}
-                  {d.capacity}, MaxDist: {d.maxDistance}, Type: {d.type}
+                  <strong>{d.depot_name}</strong> ({d.depot_x}, {d.depot_y}) -
+                  Capacity: {d.capacity}, MaxDist: {d.maxDistance}, Type:{" "}
+                  {d.type}
                 </div>
                 <div className="delete-btn-wrapper">
                   <button
@@ -587,10 +585,10 @@ const MapRoute = () => {
           <Polyline positions={routeCoords} color="blue" />
         )}
         {validCustomers.map((c) => (
-          <Marker key={c.id} position={getLatLng(c)}  icon={redIcon}/>          
+          <Marker key={c.id} position={getLatLng(c)} icon={redIcon} />
         ))}
         {validDepots.map((d) => (
-          <Marker key={d.id} position={getLatLngDepot(d)}  icon={blueIcon}/>
+          <Marker key={d.id} position={getLatLngDepot(d)} icon={blueIcon} />
         ))}
         <RecenterMap center={center} />
       </MapContainer>
