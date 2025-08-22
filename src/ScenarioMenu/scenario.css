@@ -16,7 +16,7 @@
   position: absolute;
   top: 10px;
   right: 10px;
-  z-index: 10;
+  z-index: 1000;
   opacity: 0;
   transition: all 0.15s ease-in-out;
 }
@@ -27,3 +27,11 @@
   opacity: 1;
   transform: scale(1.1) !important;
 }
+
+/* .scenario-row:hover .scenario-delete-btn {
+  display: flex;
+  opacity: 1;
+  transform: scale(1.1) !important;
+
+
+} */

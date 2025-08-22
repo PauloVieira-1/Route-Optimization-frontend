@@ -21,6 +21,7 @@ const newScenario = {
 
 function ScenarioMenu() {
   const [scenarios, setScenarios] = useState([]);
+  const [screenshots, setScreenshots] = useState([]);
 
   useEffect(() => {
     fetch("http://127.0.0.1:5100/scenarios")
@@ -30,6 +31,11 @@ function ScenarioMenu() {
         console.log(data);
       });
   }, []);
+
+  const handleScreenshot = (id: number, img: string) => {
+    setScreenshots((prev) => ({ ...prev, [id]: img }));
+    console.log("Saved screenshot for scenario", id);
+  };
 
   function addScenario() {
     fetch("http://127.0.0.1:5100/scenarios/full", {
@@ -130,6 +136,7 @@ function ScenarioMenu() {
                 updateName={updateName}
                 id={scenario.id}
                 key={scenario.id}
+                onScreenshot={handleScreenshot}
               />
             </div>
           ))

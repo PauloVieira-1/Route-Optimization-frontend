@@ -1,5 +1,5 @@
 // MapRoute.tsx
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -31,6 +31,17 @@ L.Icon.Default.mergeOptions({
   shadowUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
+
+const get_date_time = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}${month}${day}${hours}${minutes}${seconds}`;
+}
 
 interface MapRouteProps {
   points: [number, number][];
@@ -138,14 +149,15 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
   ///////////////
 
   const addCustomer = () => {
+    const current_id = get_date_time();
     fetch("http://127.0.0.1:5100/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...customerInput, scenario_id: scenarioId }),
+      body: JSON.stringify({ ...customerInput, scenario_id: scenarioId, customer_id: current_id }),
     })
       .then((res) => res.json())
       .then((data) => {
-        setCustomers([...customers, data]);
+        setCustomers([...customers, { ...data, id: current_id }]);
         setCustomerInput({
           customer_x: 0,
           customer_y: 0,
@@ -158,6 +170,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
   };
 
   const removeCustomer = (id: number) => {
+    console.log("Customer deleted:", id);
     fetch(`http://127.0.0.1:5100/customers`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -174,29 +187,99 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
       .catch((err) => console.error("Fetch error:", err));
   };
 
+  ///////////////
+  // CUSTOMERS //
+  ///////////////
+
   const addDepot = () => {
-    setDepots([...depots, { id: Date.now(), ...depotInput }]);
-    setDepotInput({
-      name: "",
-      lat: 0,
-      lng: 0,
-      capacity: 0,
-      maxDistance: 0,
-      type: "",
-    });
-    setShowModal(null);
+
+    const current_id = get_date_time();
+
+    fetch(`http://127.0.0.1:5100/depots`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...depotInput, scenario_id: scenarioId, depot_id: current_id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setDepots([...depots, { ...data, id: current_id }]);
+        setDepotInput({
+          name: "",
+          lat: 0,
+          lng: 0,
+          capacity: 0,
+          maxDistance: 0,
+          type: "",
+        });
+        setShowModal(null);
+      })
+      .catch((err) => console.error("Failed to add depot:", err));
   };
+
+  const removeDepot = (id: number) => {
+    console.log("Depot deleted:", id);
+    fetch(`http://127.0.0.1:5100/depots`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ depot_id: id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          setDepots(depots.filter((d) => d.id !== id));
+        } else {
+          console.error("Failed to delete depot:", data.error);
+        }
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
+
+
+  ///////////////
+  // VEHICLES //
+  ///////////////
 
   const addVehicle = () => {
-    setVehicles([...vehicles, { id: Date.now(), ...vehicleInput }]);
-    setVehicleInput({ capacity: 0, maxDistance: 0 });
-    setShowModal(null);
+    const current_id = get_date_time();
+
+    fetch(`http://127.0.0.1:5100/vehicles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...vehicleInput, scenario_id: scenarioId, vehicle_id: current_id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setVehicles([...vehicles, { ...data, id: current_id }]);
+        setVehicleInput({
+          capacity: 0,
+          maxDistance: 0,
+        });
+        setShowModal(null);
+      })
+      .catch((err) => console.error("Failed to add vehicle:", err));
   };
 
-  const removeDepot = (id: number) =>
-    setDepots(depots.filter((d) => d.id !== id));
-  const removeVehicle = (id: number) =>
-    setVehicles(vehicles.filter((v) => v.id !== id));
+  const removeVehicle = (id: number) => {
+    console.log("Vehicle deleted:", id);
+    fetch(`http://127.0.0.1:5100/vehicles`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vehicle_id: id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          setVehicles(vehicles.filter((v) => v.id !== id));
+        } else {
+          console.error("Failed to delete vehicle:", data.error);
+        }
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
+
+  // ///////////////
+  // OVERLAY MENU //
+  /////////////////
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
