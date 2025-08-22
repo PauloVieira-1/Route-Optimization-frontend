@@ -30,6 +30,7 @@ import {
   redIcon,
   blueIcon,
   getLatLngDepot,
+  getCostMatrix
 } from "./utiities";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -437,6 +438,7 @@ const MapRoute = () => {
               paddingTop: "10px !important",
               maxWidth: "200px",
             }}
+            onClick={() => getCostMatrix(depots, customers)}
           >
             <span className="me-3">Save</span>
             <span
