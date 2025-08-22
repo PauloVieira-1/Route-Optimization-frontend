@@ -1,5 +1,5 @@
 // MapRoute.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -21,6 +21,7 @@ import "./MapRoute.css";
 import { Link } from "react-router-dom";
 import type { Customer, Depot, Vehicle } from "../types";
 import { useParams } from "react-router-dom";
+import { get_date_time, ZoomTopRight, getLatLng, getLngLat, getFirstLatLng} from "./utiities";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -32,45 +33,45 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-const get_date_time = () => {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
-  return `${year}${month}${day}${hours}${minutes}${seconds}`;
-}
 
-interface MapRouteProps {
-  points: [number, number][];
-}
-
-const ZoomTopRight = () => {
+function RecenterMap({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    map.zoomControl.setPosition("topright");
-  }, [map]);
+    map.setView(center, map.getZoom());
+  }, [center, map]);
   return null;
-};
+}
 
-const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
+
+const MapRoute = () => {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
   const [isOverlayOpen, setIsOverlayOpen] = useState(true);
   const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
   const [title, setTitle] = useState("Scenario");
+  const [center, setCenter] = useState<[number, number]>([0, 0]);
 
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [depots, setDepots] = useState<Depot[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
+  // const [depotPoints, setDepotPoints] = useState<[number, number][]>([]);
+  // const [vehiclePoints, setVehiclePoints] = useState<[number, number][]>([]);
+
   const { id } = useParams<{ id: string }>();
   const scenarioId = parseInt(id, 10);
 
+  const validCustomers = useMemo(
+    () =>
+      customers.filter(
+        (c) => c.customer_x !== undefined && c.customer_y !== undefined
+      ),
+    [customers]
+  );
+
+
+
   useEffect(() => {
-    console.log("id: ", id);
     fetch("http://127.0.0.1:5100/scenarios_by_id", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,16 +83,16 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
         setDepots(data.depots);
         setVehicles(data.vehicles);
         setTitle(data.name);
+        setCenter(getFirstLatLng(data.customers));
       })
       .catch((err) => {
         console.error("Fetch error:", err);
       });
-  }, []);
+  }, [scenarioId]);
 
   useEffect(() => {
-    console.log("Customers: !!", customers);
-    console.log("Depots: !!", depots);
-    console.log("Vehicles: !!", vehicles);
+
+    console.log("center", center);
   });
 
   // Input states for modal
@@ -120,29 +121,41 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
   >(null);
 
   // Fetch route for map
-  useEffect(() => {
-    if (points.length < 2) return;
+useEffect(() => {
+  if (validCustomers.length < 2) return;
 
-    const fetchRoute = async () => {
-      const coordsString = points
-        .map(([lat, lng]) => `${lng},${lat}`)
-        .join(";");
-      const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+  const fetchRoute = async () => {
+    const coordsString = validCustomers
+      .map(c => getLngLat(c).join(",")) // lng,lat
+      .join(";");
 
-      try {
-        const response = await fetch(url);
-        const data = await response.json();
-        const coords = data.routes[0].geometry.coordinates.map(
-          ([lng, lat]: [number, number]) => [lat, lng],
-        );
-        setRouteCoords(coords);
-      } catch (error) {
-        console.error("Failed to fetch route:", error);
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+
+    console.log("validCustomers", validCustomers);
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      console.log("OSRM response:", data);
+
+      if (!data.routes || data.routes.length === 0) {
+        console.error("No route found");
+        setRouteCoords([]);
+        return;
       }
-    };
 
-    fetchRoute();
-  }, [points]);
+      const coords = data.routes[0].geometry.coordinates.map(
+        ([lng, lat]: [number, number]) => [lat, lng]
+      );
+
+      setRouteCoords(coords);
+    } catch (error) {
+      console.error("Failed to fetch route:", error);
+    }
+  };
+
+  fetchRoute();
+}, [customers]);
 
   ///////////////
   // CUSTOMERS //
@@ -317,7 +330,6 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
           <hr className="w-100 mb-4" />
           <ul className="list">
             {customers?.map((c) => (
-              // console.log("-------", c),
               <li key={c.id} className="list-item">
                 <div>
                   <strong>{c.customer_name}</strong> ({c.customer_x},{" "}
@@ -505,7 +517,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
           width: "50px",
           height: "50px",
           cursor: "pointer",
-          zIndex: 1100,
+          zIndex: 800,
           transition: "all 0.3s",
         }}
         className="decoration-none bg-white rounded-circle d-flex justify-content-center align-items-center border-0 button-circle"
@@ -526,7 +538,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
           width: "50px",
           height: "50px",
           cursor: "pointer",
-          zIndex: 1100,
+          zIndex: 800,
           transition: "all 0.3s",
         }}
         className="decoration-none bg-white rounded-circle d-flex justify-content-center align-items-center border-0 button-circle"
@@ -540,7 +552,7 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
 
       {/* Map */}
       <MapContainer
-        center={points[0]}
+        center={center} 
         zoom={7}
         style={{ height: "100%", width: "100%" }}
       >
@@ -549,13 +561,15 @@ const MapRoute: React.FC<MapRouteProps> = ({ points }) => {
         {routeCoords.length > 0 && (
           <Polyline positions={routeCoords} color="blue" />
         )}
-        {points.map((point, idx) => (
-          <Marker key={idx} position={point} />
+        {validCustomers.map((c) => (
+          <Marker key={c.id} position={getLatLng(c)} />
+          //icon={customerIcon}
         ))}
+          <RecenterMap center={center} />
       </MapContainer>
 
       {/* Modal */}
-      <Modal show={showModal !== null} onHide={() => setShowModal(null)}>
+      <Modal show={showModal !== null} onHide={() => setShowModal(null)} style={{ zIndex: 1200 }}>
         <Modal.Header closeButton>
           <Modal.Title>
             {showModal === "customer" && "Add Customer"}

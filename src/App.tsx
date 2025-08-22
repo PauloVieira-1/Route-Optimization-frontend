@@ -16,7 +16,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/scenario/:id" element={<MapRoute points={points} />} />
+      <Route path="/scenario/:id" element={<MapRoute/>} />
     </Routes>
   );
 }
