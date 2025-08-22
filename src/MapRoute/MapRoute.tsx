@@ -21,7 +21,13 @@ import "./MapRoute.css";
 import { Link } from "react-router-dom";
 import type { Customer, Depot, Vehicle } from "../types";
 import { useParams } from "react-router-dom";
-import { get_date_time, ZoomTopRight, getLatLng, getLngLat, getFirstLatLng} from "./utiities";
+import {
+  get_date_time,
+  ZoomTopRight,
+  getLatLng,
+  getLngLat,
+  getFirstLatLng,
+} from "./utiities";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -33,7 +39,6 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
 
-
 function RecenterMap({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
@@ -41,7 +46,6 @@ function RecenterMap({ center }: { center: [number, number] }) {
   }, [center, map]);
   return null;
 }
-
 
 const MapRoute = () => {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
@@ -64,12 +68,10 @@ const MapRoute = () => {
   const validCustomers = useMemo(
     () =>
       customers.filter(
-        (c) => c.customer_x !== undefined && c.customer_y !== undefined
+        (c) => c.customer_x !== undefined && c.customer_y !== undefined,
       ),
-    [customers]
+    [customers],
   );
-
-
 
   useEffect(() => {
     fetch("http://127.0.0.1:5100/scenarios_by_id", {
@@ -91,7 +93,6 @@ const MapRoute = () => {
   }, [scenarioId]);
 
   useEffect(() => {
-
     console.log("center", center);
   });
 
@@ -121,41 +122,41 @@ const MapRoute = () => {
   >(null);
 
   // Fetch route for map
-useEffect(() => {
-  if (validCustomers.length < 2) return;
+  useEffect(() => {
+    if (validCustomers.length < 2) return;
 
-  const fetchRoute = async () => {
-    const coordsString = validCustomers
-      .map(c => getLngLat(c).join(",")) // lng,lat
-      .join(";");
+    const fetchRoute = async () => {
+      const coordsString = validCustomers
+        .map((c) => getLngLat(c).join(",")) // lng,lat
+        .join(";");
 
-    const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
 
-    console.log("validCustomers", validCustomers);
+      console.log("validCustomers", validCustomers);
 
-    try {
-      const response = await fetch(url);
-      const data = await response.json();
-      console.log("OSRM response:", data);
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        console.log("OSRM response:", data);
 
-      if (!data.routes || data.routes.length === 0) {
-        console.error("No route found");
-        setRouteCoords([]);
-        return;
+        if (!data.routes || data.routes.length === 0) {
+          console.error("No route found");
+          setRouteCoords([]);
+          return;
+        }
+
+        const coords = data.routes[0].geometry.coordinates.map(
+          ([lng, lat]: [number, number]) => [lat, lng],
+        );
+
+        setRouteCoords(coords);
+      } catch (error) {
+        console.error("Failed to fetch route:", error);
       }
+    };
 
-      const coords = data.routes[0].geometry.coordinates.map(
-        ([lng, lat]: [number, number]) => [lat, lng]
-      );
-
-      setRouteCoords(coords);
-    } catch (error) {
-      console.error("Failed to fetch route:", error);
-    }
-  };
-
-  fetchRoute();
-}, [customers]);
+    fetchRoute();
+  }, [customers]);
 
   ///////////////
   // CUSTOMERS //
@@ -166,7 +167,11 @@ useEffect(() => {
     fetch("http://127.0.0.1:5100/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...customerInput, scenario_id: scenarioId, customer_id: current_id }),
+      body: JSON.stringify({
+        ...customerInput,
+        scenario_id: scenarioId,
+        customer_id: current_id,
+      }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -205,13 +210,16 @@ useEffect(() => {
   ///////////////
 
   const addDepot = () => {
-
     const current_id = get_date_time();
 
     fetch(`http://127.0.0.1:5100/depots`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...depotInput, scenario_id: scenarioId, depot_id: current_id }),
+      body: JSON.stringify({
+        ...depotInput,
+        scenario_id: scenarioId,
+        depot_id: current_id,
+      }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -247,7 +255,6 @@ useEffect(() => {
       .catch((err) => console.error("Fetch error:", err));
   };
 
-
   ///////////////
   // VEHICLES //
   ///////////////
@@ -258,7 +265,11 @@ useEffect(() => {
     fetch(`http://127.0.0.1:5100/vehicles`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...vehicleInput, scenario_id: scenarioId, vehicle_id: current_id }),
+      body: JSON.stringify({
+        ...vehicleInput,
+        scenario_id: scenarioId,
+        vehicle_id: current_id,
+      }),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -552,7 +563,7 @@ useEffect(() => {
 
       {/* Map */}
       <MapContainer
-        center={center} 
+        center={center}
         zoom={7}
         style={{ height: "100%", width: "100%" }}
       >
@@ -565,11 +576,15 @@ useEffect(() => {
           <Marker key={c.id} position={getLatLng(c)} />
           //icon={customerIcon}
         ))}
-          <RecenterMap center={center} />
+        <RecenterMap center={center} />
       </MapContainer>
 
       {/* Modal */}
-      <Modal show={showModal !== null} onHide={() => setShowModal(null)} style={{ zIndex: 1200 }}>
+      <Modal
+        show={showModal !== null}
+        onHide={() => setShowModal(null)}
+        style={{ zIndex: 1200 }}
+      >
         <Modal.Header closeButton>
           <Modal.Title>
             {showModal === "customer" && "Add Customer"}

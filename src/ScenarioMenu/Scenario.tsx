@@ -38,9 +38,9 @@ function Scenario({
       if (mapRef.current) {
         const canvas = await html2canvas(mapRef.current);
         const imgData = canvas.toDataURL("image/png");
-        onScreenshot(id, imgData); 
+        onScreenshot(id, imgData);
       }
-    }, 1500); 
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [id, onScreenshot]);
@@ -59,11 +59,11 @@ function Scenario({
           style={{ height: "170px" }}
         >
           <MapContainer
-            center={[52.3676, 4.9041]} 
+            center={[52.3676, 4.9041]}
             zoom={8}
             style={{ height: "100%", width: "100%" }}
-            attributionControl={false} 
-            zoomControl={false} 
+            attributionControl={false}
+            zoomControl={false}
             doubleClickZoom={false}
             scrollWheelZoom={false}
             dragging={false}
