@@ -7,7 +7,6 @@ import {
   Polyline,
   useMap,
 } from "react-leaflet";
-import L, { icon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   FaArrowRight,
@@ -57,6 +56,8 @@ const MapRoute = () => {
   const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
   const [title, setTitle] = useState("Scenario");
   const [center, setCenter] = useState<[number, number]>([0, 0]);
+  const [transportationProbelm, setTransportationProblem] =
+    useState<string>("");
 
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -102,10 +103,6 @@ const MapRoute = () => {
       });
   }, [scenarioId]);
 
-  useEffect(() => {
-    console.log("center", center);
-  });
-
   // Input states for modal
   const [customerInput, setCustomerInput] = useState({
     customer_x: 0,
@@ -141,9 +138,6 @@ const MapRoute = () => {
         .join(";");
 
       const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-
-      console.log("validCustomers", validCustomers);
-
       try {
         const response = await fetch(url);
         const data = await response.json();
@@ -198,7 +192,6 @@ const MapRoute = () => {
   };
 
   const removeCustomer = (id: number) => {
-    console.log("Customer deleted:", id);
     fetch(`http://127.0.0.1:5100/customers`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -248,7 +241,6 @@ const MapRoute = () => {
   };
 
   const removeDepot = (id: number) => {
-    console.log("Depot deleted:", id);
     fetch(`http://127.0.0.1:5100/depots`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -294,7 +286,6 @@ const MapRoute = () => {
   };
 
   const removeVehicle = (id: number) => {
-    console.log("Vehicle deleted:", id);
     fetch(`http://127.0.0.1:5100/vehicles`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -314,6 +305,32 @@ const MapRoute = () => {
   // ///////////////
   // OVERLAY MENU //
   /////////////////
+
+  const getTransportationProblem = async (
+    depots: Depot[],
+    customers: Customer[],
+  ) => {
+    const costMatrix: number[][] = await getCostMatrix(depots, customers);
+    console.log("Cost matrix:", costMatrix);
+    console.log("Depots:", depots);
+    console.log("Customers:", customers);
+
+    fetch(`http://127.0.0.1:5100/solvetp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        demand: customers,
+        supply: depots,
+        costMatrix: costMatrix,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setTransportationProblem(data);
+        console.log(data);
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
@@ -353,8 +370,14 @@ const MapRoute = () => {
             {customers?.map((c) => (
               <li key={c.id} className="list-item">
                 <div>
-                  <strong>{c.customer_name}</strong> ({c.customer_x},{" "}
-                  {c.customer_y}) - Demand: {c.demand}
+                  <strong>{c.customer_name}</strong>
+                  <div style={{ marginTop: "4px" }}>
+                    <span style={{ fontWeight: 500 }}>Coordinates:</span> (
+                    {c.customer_x.toFixed(4)}, {c.customer_y.toFixed(4)})
+                  </div>
+                  <div style={{ marginTop: "2px" }}>
+                    <span style={{ fontWeight: 500 }}>Demand:</span> {c.demand}
+                  </div>
                 </div>
                 <div className="delete-btn-wrapper">
                   <button
@@ -382,9 +405,23 @@ const MapRoute = () => {
             {depots?.map((d) => (
               <li key={d.id} className="list-item">
                 <div>
-                  <strong>{d.depot_name}</strong> ({d.depot_x}, {d.depot_y}) -
-                  Capacity: {d.capacity}, MaxDist: {d.maxDistance}, Type:{" "}
-                  {d.type}
+                  <strong>{d.depot_name}</strong>
+                  <div style={{ marginTop: "4px" }}>
+                    <span style={{ fontWeight: 500 }}>Coordinates:</span> • (
+                    {d.depot_x.toFixed(4)}, {d.depot_y.toFixed(4)})
+                  </div>
+                  <div style={{ marginTop: "2px" }}>
+                    <span style={{ fontWeight: 500 }}>Capacity:</span> •{" "}
+                    {d.capacity}
+                  </div>
+                  <div style={{ marginTop: "2px" }}>
+                    <span style={{ fontWeight: 500 }}>Max Distance:</span> •{" "}
+                    {d.maxDistance ?? "N/A"}
+                  </div>
+                  <div style={{ marginTop: "2px" }}>
+                    <span style={{ fontWeight: 500 }}>Type:</span> •{" "}
+                    {d.type || "N/A"}
+                  </div>
                 </div>
                 <div className="delete-btn-wrapper">
                   <button
@@ -411,7 +448,14 @@ const MapRoute = () => {
             {vehicles?.map((v) => (
               <li key={v.id} className="list-item">
                 <div>
-                  Capacity: {v.capacity}, MaxDist: {v.maxDistance}
+                  <div style={{ marginTop: "2px" }}>
+                    <span style={{ fontWeight: 500 }}>Capacity:</span> •{" "}
+                    {v.capacity}
+                  </div>
+                  <div style={{ marginTop: "2px" }}>
+                    <span style={{ fontWeight: 500 }}>Max Distance:</span> •{" "}
+                    {v.maxDistance ?? "N/A"}
+                  </div>
                 </div>
                 <div className="delete-btn-wrapper">
                   <button
@@ -436,9 +480,9 @@ const MapRoute = () => {
               paddingTop: "10px !important",
               maxWidth: "200px",
             }}
-            onClick={() => getCostMatrix(depots, customers)}
+            onClick={() => getTransportationProblem(depots, customers)}
           >
-            <span className="me-3">Save</span>
+            <span className="me-3">Calculate</span>
             <span
               className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
               style={{ width: "32px", height: "32px" }}
@@ -481,7 +525,6 @@ const MapRoute = () => {
             fontSize: "18px",
             transition: "all 0.3s",
           }}
-          onClick={() => console.log("Plus button clicked")}
           className="button-circle "
         >
           <FaPlus />
@@ -523,7 +566,6 @@ const MapRoute = () => {
               justifyContent: "center",
               fontSize: "18px",
             }}
-            onClick={() => console.log("Plus button clicked")}
             className="button-circle "
           >
             <FaHouseUser />
