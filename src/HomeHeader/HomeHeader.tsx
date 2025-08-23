@@ -21,25 +21,25 @@ function HomeHeader() {
         </Col>
       </Row>
       <Link to="/learn-more" className="text-decoration-none">
-      <Button
-        variant="primary"
-        className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 button-circle"
-        style={{
-          bottom: "20px",
-          right: "20px",
-          minWidth: "200px",
-          paddingBottom: "40px !important",
-          paddingTop: "10px !important",
-        }}
-      >
-        <span className="me-3">Learn More</span>
-        <span
-          className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
-          style={{ width: "32px", height: "32px" }}
+        <Button
+          variant="primary"
+          className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 button-circle"
+          style={{
+            bottom: "20px",
+            right: "20px",
+            minWidth: "200px",
+            paddingBottom: "40px !important",
+            paddingTop: "10px !important",
+          }}
         >
-          <FaArrowRight size={14} />
-        </span>
-      </Button>
+          <span className="me-3">Learn More</span>
+          <span
+            className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
+            style={{ width: "32px", height: "32px" }}
+          >
+            <FaArrowRight size={14} />
+          </span>
+        </Button>
       </Link>
     </Container>
   );

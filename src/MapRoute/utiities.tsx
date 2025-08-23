@@ -110,7 +110,6 @@ const getCostMatrix = async (
     if (!data.distances) throw new Error("No distances returned from OSRM");
 
     // OSRM returns a 2D array: rows = depots, columns = all waypoints
-    // We need only the depot → customer part (first depots.length rows, last customers.length columns)
     const matrix: number[][] = data.distances.slice(0, depots.length).map(
       (row) => row.slice(depots.length), // skip depot→depot part
     );
