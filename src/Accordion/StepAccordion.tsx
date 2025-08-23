@@ -2,15 +2,13 @@ import Accordion from "react-bootstrap/Accordion";
 
 function StepAccordion() {
   return (
-    <Accordion defaultActiveKey="0" alwaysOpen className="rounded-5 shadow">
+    <Accordion defaultActiveKey="0" alwaysOpen>
       {/* Step 1: Building the Distance Matrix */}
       <Accordion.Item eventKey="0">
         <Accordion.Header>
-          <strong className="fw-bold ">
-            Step 1: Building the Distance Matrix{" "}
-          </strong>
+          Step 1: Building the Distance Matrix
         </Accordion.Header>
-        <Accordion.Body className="p-5">
+        <Accordion.Body>
           <p>
             The process begins by preparing a distance matrix using the{" "}
             <strong>Open Source Routing Machine (OSRM)</strong>. Each depot and
@@ -35,13 +33,15 @@ function StepAccordion() {
             with demand information, customer IDs, and depot IDs, and sent to
             the backend for optimization.
           </p>
-          <h6>Mathematical Notation</h6>
+          <h6>Mathematical Formulation</h6>
           <pre>
-            {`Let D = set of depots
-    C = set of customers
-    c_{ij} = distance from location i to location j (from OSRM)
+            {`Let D = set of depots, C = set of customers
+Let c_{ij} = travel cost (distance) from depot i ∈ D to customer j ∈ C
 
-Distance matrix M = [c_{ij}], where i ∈ D, j ∈ (D ∪ C)`}
+Distance matrix M:
+  M[i][j] = c_{ij}
+
+This matrix serves as input for customer assignment and routing steps.`}
           </pre>
         </Accordion.Body>
       </Accordion.Item>
@@ -49,11 +49,9 @@ Distance matrix M = [c_{ij}], where i ∈ D, j ∈ (D ∪ C)`}
       {/* Step 2: Assigning Customers to Depots */}
       <Accordion.Item eventKey="1">
         <Accordion.Header>
-          <strong className="fw-bold ">
-            Step 2: Assigning Customers to Depots{" "}
-          </strong>
+          Step 2: Assigning Customers to Depots
         </Accordion.Header>
-        <Accordion.Body className="p-5">
+        <Accordion.Body>
           <p>
             The next step determines which depots should serve which customers.
             This is based on travel distances from the matrix, under the
@@ -65,20 +63,19 @@ Distance matrix M = [c_{ij}], where i ∈ D, j ∈ (D ∪ C)`}
             The optimization is formulated as a{" "}
             <strong>Linear Programming problem</strong> using the{" "}
             <code>PuLP</code> package in Python. The objective is to minimize
-            the total assignment cost.
+            the total assignment cost:
           </p>
           <h6>Mathematical Formulation</h6>
           <pre>
-            {`Decision variable:
-   x_{ij} = 1 if customer j ∈ C is assigned to depot i ∈ D
-            0 otherwise
+            {`Decision variables:
+  y_{ij} = 1 if customer j ∈ C is assigned to depot i ∈ D, 0 otherwise
 
 Objective:
-   Minimize   ∑_{i ∈ D} ∑_{j ∈ C} c_{ij} x_{ij}
+  Minimize total assignment cost: ∑_{i∈D} ∑_{j∈C} c_{ij} * y_{ij}
 
 Constraints:
-   ∑_{i ∈ D} x_{ij} = 1   ∀ j ∈ C    (each customer is assigned to exactly one depot)
-   x_{ij} ∈ {0,1}`}
+  1. Each customer is assigned to exactly one depot: ∑_{i∈D} y_{ij} = 1 ∀ j ∈ C
+  2. Optional: Depot capacity constraints: ∑_{j∈C} demand_j * y_{ij} ≤ capacity_i ∀ i ∈ D`}
           </pre>
           <p>
             The output specifies the total cost of assignments and a list of
@@ -87,68 +84,62 @@ Constraints:
         </Accordion.Body>
       </Accordion.Item>
 
-      {/* Step 3: Solving the Multiple-Depot mTSP */}
+      {/* Step 3: Solving the Multiple-Depot Vehicle Routing Problem */}
       <Accordion.Item eventKey="2">
         <Accordion.Header>
-          {" "}
-          <strong className="fw-bold ">
-            Step 3: Constructing Routes (Multiple-Depot mTSP){" "}
-          </strong>
+          Step 3: Constructing Routes (Multiple-Depot VRP)
         </Accordion.Header>
-        <Accordion.Body className="p-5">
+        <Accordion.Body>
           <p>
-            With customers assigned to depots, the problem reduces to a{" "}
-            <strong>Multiple-Depot Traveling Salesman Problem (MDTSP)</strong>.
-            Each depot serves as the start (and end) location for exactly one
-            salesperson (or vehicle).
+            With customers assigned to depots, the problem is modeled as a{" "}
+            <strong>Multiple-Depot Vehicle Routing Problem (MDVRP)</strong>.
+            Each depot can dispatch one or more vehicles, each with a capacity
+            limit, to serve its assigned customers.
           </p>
           <p>The model enforces the following rules:</p>
           <ul>
-            <li>Each non-depot city is visited exactly once.</li>
+            <li>Each customer is visited exactly once.</li>
             <li>
-              A route must start and end at the same depot (unless open tours
-              are explicitly allowed).
+              Vehicles start and end at the same depot (unless open tours are
+              allowed).
             </li>
+            <li>Each vehicle cannot exceed its maximum capacity.</li>
             <li>
-              Outgoing edges from each depot are limited to 1, meaning at most
-              one route can leave a depot.
-            </li>
-            <li>
-              Incoming edges to each depot are also limited to 1, ensuring
-              routes return properly.
-            </li>
-            <li>
-              Subtour elimination (via Miller–Tucker–Zemlin constraints) applies
-              only to customer nodes, preventing disjoint cycles that exclude a
+              Outgoing edges from depots correspond to vehicles leaving the
               depot.
             </li>
+            <li>
+              Incoming edges to depots correspond to vehicles returning to the
+              depot.
+            </li>
+            <li>
+              Subtour elimination (via Miller–Tucker–Zemlin or other
+              constraints) applies to customer nodes to prevent disconnected
+              routes.
+            </li>
           </ul>
-          <h6>Mathematical Formulation (MDTSP with MTZ)</h6>
+          <p>
+            The solution produces a set of{" "}
+            <strong>optimized vehicle routes</strong>— one or more per
+            depot—that minimize total travel cost while respecting capacity and
+            depot constraints.
+          </p>
+          <h6>Mathematical Formulation</h6>
           <pre>
             {`Decision variables:
-   x_{ij} = 1 if edge (i,j) is used in a route, 0 otherwise
-   u_i    = ordering variable for MTZ (only for customers)
+  x_{ijk} = 1 if vehicle k travels from customer i to customer j, 0 otherwise
+  u_i = load accumulated by the vehicle after visiting customer i
 
 Objective:
-   Minimize   ∑_{i ∈ D ∪ C} ∑_{j ∈ D ∪ C, j ≠ i} c_{ij} x_{ij}
+  Minimize total distance: ∑_{i,j,k} c_{ij} * x_{ijk}
 
 Constraints:
-   ∑_{i ∈ D ∪ C, i ≠ j} x_{ij} = 1   ∀ j ∈ C   (each customer entered once)
-   ∑_{j ∈ D ∪ C, j ≠ i} x_{ij} = 1   ∀ i ∈ C   (each customer exited once)
-
-   ∑_{j ∈ C} x_{dj} ≤ 1              ∀ d ∈ D   (at most one route leaves each depot)
-   ∑_{i ∈ C} x_{id} ≤ 1              ∀ d ∈ D   (at most one route returns to each depot)
-
-MTZ subtour elimination:
-   u_i - u_j + (|C|) * x_{ij} ≤ |C|-1    ∀ i,j ∈ C, i ≠ j
-   1 ≤ u_i ≤ |C|                         ∀ i ∈ C`}
+  1. Each customer visited exactly once: ∑_{i,k} x_{ijk} = 1 ∀ j
+  2. Vehicle capacity: u_i ≤ capacity_k ∀ i,k
+  3. Flow conservation: ∑_{i} x_{ijk} = ∑_{j} x_{jik} ∀ k, ∀ i (customers)
+  4. Vehicles start and end at their assigned depot
+  5. Subtour elimination (MTZ or other)`}
           </pre>
-          <p>
-            The solution of this step yields a set of{" "}
-            <strong>optimized routes</strong>
-            —one per depot—that minimize total travel cost while respecting the
-            constraints of the multiple-depot formulation.
-          </p>
         </Accordion.Body>
       </Accordion.Item>
     </Accordion>
