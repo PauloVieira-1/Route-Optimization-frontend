@@ -1,5 +1,5 @@
 // MapRoute.tsx
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -22,7 +22,6 @@ import type { Customer, Depot, Vehicle } from "../types";
 import { useParams } from "react-router-dom";
 import {
   get_date_time,
-  ZoomTopRight,
   getLatLng,
   getLngLat,
   getFirstLatLng,
@@ -31,6 +30,8 @@ import {
   getLatLngDepot,
   getCostMatrix,
 } from "./utiities";
+import ZoomTopRight from "./ZoomtoRight";
+
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -68,7 +69,7 @@ const MapRoute = () => {
   // const [vehiclePoints, setVehiclePoints] = useState<[number, number][]>([]);
 
   const { id } = useParams<{ id: string }>();
-  const scenarioId = parseInt(id, 10);
+  const scenarioId = parseInt(id || "", 10);
 
   const validCustomers = useMemo(
     () =>

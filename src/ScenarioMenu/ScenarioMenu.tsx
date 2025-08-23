@@ -2,13 +2,16 @@ import { Container, Row, Col, Button } from "react-bootstrap";
 import { FaPlus } from "react-icons/fa";
 import Scenario from "./Scenario";
 import { useEffect, useState } from "react";
+import { getCurrentDate } from "../MapRoute/utiities";
+import type { Depot, Vehicle, Customer } from "../types";
 
-function getCurrentDate() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+interface ScenarioType {
+  id: number;
+  name: string;
+  date: string;
+  depots?: Depot[];
+  vehicles?: Vehicle[];
+  customers?: Customer[];
 }
 
 const newScenario = {
@@ -20,20 +23,23 @@ const newScenario = {
 };
 
 function ScenarioMenu() {
-  const [scenarios, setScenarios] = useState([]);
-  const [screenshots, setScreenshots] = useState([]);
+  const [scenarios, setScenarios] = useState<ScenarioType[]>([]);
+  const [screenshots, setScreenshots] = useState<{ [key: number]: string }>([]);
 
   useEffect(() => {
     fetch("http://127.0.0.1:5100/scenarios")
       .then((res) => res.json())
       .then((data) => {
         setScenarios(data);
-        console.log(data);
+        console.log(screenshots);
       });
-  }, []);
+  }, [screenshots]);
 
   const handleScreenshot = (id: number, img: string) => {
-    setScreenshots((prev) => ({ ...prev, [id]: img }));
+    setScreenshots((prev: { [key: number]: string }) => ({
+      ...prev,
+      [id]: img,
+    }));
     console.log("Saved screenshot for scenario", id);
   };
 
@@ -88,8 +94,8 @@ function ScenarioMenu() {
       .then((data) => {
         if (data.status === "success") {
           setScenarios(
-            scenarios.map((s: any) =>
-              s.id === id ? { ...s, title: name } : s,
+            scenarios.map((s: ScenarioType) =>
+              s.id === id ? { ...s, name: name } : s,
             ),
           );
         } else {
@@ -98,11 +104,6 @@ function ScenarioMenu() {
       })
       .catch((err) => console.error("Fetch error:", err));
   }
-
-  // function deleteAll() {
-  //   fetch(`http://127.0.0.1:5000/reset-database`, { method: "POST" });
-  //   setScenarios([]);
-  // }
 
   return (
     <Container fluid className="px-5 py-5">
@@ -127,7 +128,7 @@ function ScenarioMenu() {
         style={{ display: "flex", flexWrap: "wrap", gap: "40px" }}
       >
         {scenarios.length > 0 ? (
-          scenarios.map((scenario: any) => (
+          scenarios.map((scenario: ScenarioType) => (
             <div key={scenario.id} style={{ width: "400px" }}>
               <Scenario
                 title={scenario.name}
@@ -144,9 +145,6 @@ function ScenarioMenu() {
           <p className="text-muted">No scenarios found</p>
         )}
       </Row>
-      {/* <Row>
-        <button className="btn btn-danger" onClick={deleteAll}>DELETE ALL</button>
-      </Row> */}
     </Container>
   );
 }
