@@ -19,7 +19,7 @@ interface Depot {
 interface Vehicle {
   id: number;
   capacity: number;
-  maxDistance: number;
+  depot_id: number;
 }
 
 export type { Customer, Depot, Vehicle };

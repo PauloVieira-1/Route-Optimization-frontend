@@ -63,6 +63,7 @@ const MapRoute = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [depots, setDepots] = useState<Depot[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [mdvrpProblem, setMDVRPProblem] = useState<string>("");
 
   // const [depotPoints, setDepotPoints] = useState<[number, number][]>([]);
   // const [vehiclePoints, setVehiclePoints] = useState<[number, number][]>([]);
@@ -120,7 +121,7 @@ const MapRoute = () => {
   });
   const [vehicleInput, setVehicleInput] = useState({
     capacity: 0,
-    maxDistance: 0,
+    depot_id: 0,
   });
 
   // Modal states
@@ -275,10 +276,10 @@ const MapRoute = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        setVehicles([...vehicles, { ...data, id: current_id }]);
+        setVehicles([...vehicles, { ...data[0], id: current_id }]);
         setVehicleInput({
           capacity: 0,
-          maxDistance: 0,
+          depot_id: 0,
         });
         setShowModal(null);
       })
@@ -311,9 +312,10 @@ const MapRoute = () => {
     customers: Customer[],
   ) => {
     const costMatrix: number[][] = await getCostMatrix(depots, customers);
-    console.log("Cost matrix:", costMatrix);
-    console.log("Depots:", depots);
-    console.log("Customers:", customers);
+    // console.log("Cost matrix:", costMatrix);
+    // console.log("Depots:", depots);
+    // console.log("Customers:", customers);
+    // console.log("Vehicles:", vehicles);
 
     fetch(`http://127.0.0.1:5100/solvetp`, {
       method: "POST",
@@ -327,6 +329,36 @@ const MapRoute = () => {
       .then((res) => res.json())
       .then((data) => {
         setTransportationProblem(data);
+        console.log(data);
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
+
+  const getMDVRPProblem = async (
+    depots: Depot[],
+    customers: Customer[],
+    vehicles: Vehicle[],
+  ) => {
+    const costMatrix: number[][] = await getCostMatrix(depots, customers);
+
+    console.log("Cost matrix:", costMatrix);
+    console.log("Depots:", depots);
+    console.log("Customers:", customers);
+    console.log("Vehicles:", vehicles);
+    
+    fetch(`http://127.0.0.1:5100/mdvrp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        depots: depots,
+        customers: customers,
+        vehicles: vehicles,
+        costMatrix: costMatrix,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setMDVRPProblem(data);
         console.log(data);
       })
       .catch((err) => console.error("Fetch error:", err));
@@ -407,19 +439,19 @@ const MapRoute = () => {
                 <div>
                   <strong>{d.depot_name}</strong>
                   <div style={{ marginTop: "4px" }}>
-                    <span style={{ fontWeight: 500 }}>Coordinates:</span> • (
+                    <span style={{ fontWeight: 500 }}>Coordinates:</span>  (
                     {d.depot_x.toFixed(4)}, {d.depot_y.toFixed(4)})
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Capacity:</span> •{" "}
+                    <span style={{ fontWeight: 500 }}>Capacity:</span> {" "}
                     {d.capacity}
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Max Distance:</span> •{" "}
+                    <span style={{ fontWeight: 500 }}>Max Distance:</span> {" "}
                     {d.maxDistance ?? "N/A"}
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Type:</span> •{" "}
+                    <span style={{ fontWeight: 500 }}>Type:</span> {" "}
                     {d.type || "N/A"}
                   </div>
                 </div>
@@ -449,12 +481,12 @@ const MapRoute = () => {
               <li key={v.id} className="list-item">
                 <div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Capacity:</span> •{" "}
+                    <span style={{ fontWeight: 500 }}>Capacity:</span> {" "}
                     {v.capacity}
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Max Distance:</span> •{" "}
-                    {v.maxDistance ?? "N/A"}
+                    <span style={{ fontWeight: 500 }}>Depot:</span> {" "}
+                    {depots.find((d) => d.id === v.depot_id)?.depot_name || "N/A"}
                   </div>
                 </div>
                 <div className="delete-btn-wrapper">
@@ -480,7 +512,11 @@ const MapRoute = () => {
               paddingTop: "10px !important",
               maxWidth: "200px",
             }}
-            onClick={() => getTransportationProblem(depots, customers)}
+            onClick={() => {
+              
+              // getTransportationProblem(depots, customers); 
+              getMDVRPProblem(depots, customers, vehicles)
+            }}
           >
             <span className="me-3">Calculate</span>
             <span
@@ -797,17 +833,24 @@ const MapRoute = () => {
                 />
               </Form.Group>
               <Form.Group className="mb-2">
-                <Form.Label>Max Distance</Form.Label>
+                <Form.Label>Depots</Form.Label>
                 <Form.Control
-                  type="number"
-                  value={vehicleInput.maxDistance}
+                  as="select"
+                  value={vehicleInput.depot_id}
                   onChange={(e) =>
                     setVehicleInput({
                       ...vehicleInput,
-                      maxDistance: Number(e.target.value),
+                      depot_id: Number(e.target.value),
                     })
                   }
-                />
+                >
+                  <option value={0}>Select depot</option>
+                  {depots.map((depot) => (
+                    <option key={depot.id} value={depot.id}>
+                      {depot.depot_name}
+                    </option>
+                  ))}
+                </Form.Control>
               </Form.Group>
             </>
           )}
