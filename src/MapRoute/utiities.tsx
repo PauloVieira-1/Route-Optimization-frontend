@@ -2,7 +2,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import type { LatLngTuple } from "leaflet";
-import type { Customer } from "../types";
+import type { Customer, Route } from "../types";
 
 // This file contains various utility functions that are used throughout the MapRoute component.
 //
@@ -202,6 +202,8 @@ const getCostMatrix = async (
     );
   }
 };
+
+
 
 // Icons
 

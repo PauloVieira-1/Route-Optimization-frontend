@@ -22,4 +22,10 @@ interface Vehicle {
   depot_id: number;
 }
 
-export type { Customer, Depot, Vehicle };
+interface Route {
+  id: number;
+  route: [number, number][]; 
+}
+
+
+export type { Customer, Depot, Vehicle, Route };

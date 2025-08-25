@@ -18,7 +18,7 @@ import {
 import { Modal, Button, Form } from "react-bootstrap";
 import "./MapRoute.css";
 import { Link } from "react-router-dom";
-import type { Customer, Depot, Vehicle } from "../types";
+import type { Customer, Depot, Vehicle, Route } from "../types";
 import { useParams } from "react-router-dom";
 import {
   get_date_time,
@@ -31,6 +31,7 @@ import {
   getCostMatrix,
 } from "./utiities";
 import ZoomTopRight from "./ZoomtoRight";
+import RoutingMachine from "./RoutingMachine";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -51,9 +52,9 @@ function RecenterMap({ center }: { center: [number, number] }) {
 }
 
 const MapRoute = () => {
-  const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
-  const [isOverlayOpen, setIsOverlayOpen] = useState(true);
+  const [routeCoords, setRouteCoords] = useState<Route[]>([]);
   const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [title, setTitle] = useState("Scenario");
   const [center, setCenter] = useState<[number, number]>([0, 0]);
   const [transportationProbelm, setTransportationProblem] =
@@ -334,6 +335,7 @@ const MapRoute = () => {
       .catch((err) => console.error("Fetch error:", err));
   };
 
+
   const getMDVRPProblem = async (
     depots: Depot[],
     customers: Customer[],
@@ -359,10 +361,47 @@ const MapRoute = () => {
       .then((res) => res.json())
       .then((data) => {
         setMDVRPProblem(data);
-        console.log(data);
+        console.log("MDVRP problem:", data);
+        setRouteCoords(makeRouteList(data.routes));
       })
       .catch((err) => console.error("Fetch error:", err));
   };
+
+
+const getCoordinatesFromName = (name: string): [number, number] | undefined => {
+  const depot = depots.find(d => d.depot_name?.toLowerCase().includes(name.toLowerCase()));
+  if (depot) return [depot.depot_x, depot.depot_y];
+
+  const customer = customers.find(c => c.customer_name?.toLowerCase().includes(name.toLowerCase()));
+  if (customer) return [customer.customer_x, customer.customer_y];
+
+  console.warn("No coordinates found for", name);
+  return undefined;
+};
+
+
+
+const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] => {
+  return routeArray.map(route_info => {
+    const coords: [number, number][] = [];
+
+    route_info.route.forEach(name => {
+      const point = getCoordinatesFromName(name);
+      console.log(name, point);
+      if (point) coords.push(point); 
+    });
+
+    // return to origin
+    if (coords.length > 0) coords.push(coords[0]);
+
+    console.log("Route", route_info.route[0], ":", coords);
+
+    return {
+      id: route_info.id,
+      route: coords,
+    };
+  });
+};
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
@@ -652,16 +691,19 @@ const MapRoute = () => {
       </button>
 
       {/* Map */}
-      <MapContainer
-        center={center}
-        zoom={7}
-        style={{ height: "100%", width: "100%" }}
-      >
+      <MapContainer center={center} zoom={7} style={{ height: "100%", width: "100%" }}>
         <ZoomTopRight />
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {routeCoords.length > 0 && (
-          <Polyline positions={routeCoords} color="blue" />
-        )}
+        {routeCoords === undefined ? null : routeCoords
+          ?.filter((r) => r.route?.length && r.route.length > 1)
+          .map((coord, index) => (
+            <RoutingMachine
+              key={coord.id}
+              route={coord.route}
+              color={index === 0 ? "red" : "blue"}
+            />
+          ))}
+
         {validCustomers.map((c) => (
           <Marker key={c.id} position={getLatLng(c)} icon={redIcon} />
         ))}
@@ -670,7 +712,6 @@ const MapRoute = () => {
         ))}
         <RecenterMap center={center} />
       </MapContainer>
-
       {/* Modal */}
       <Modal
         show={showModal !== null}
