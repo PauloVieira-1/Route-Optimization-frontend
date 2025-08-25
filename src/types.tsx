@@ -24,8 +24,7 @@ interface Vehicle {
 
 interface Route {
   id: number;
-  route: [number, number][]; 
+  route: [number, number][];
 }
-
 
 export type { Customer, Depot, Vehicle, Route };

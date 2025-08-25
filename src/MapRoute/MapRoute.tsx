@@ -15,6 +15,7 @@ import {
   FaTimes,
   FaHouseUser,
 } from "react-icons/fa";
+import { BsFillQuestionCircleFill } from "react-icons/bs";
 import { Modal, Button, Form } from "react-bootstrap";
 import "./MapRoute.css";
 import { Link } from "react-router-dom";
@@ -32,6 +33,8 @@ import {
 } from "./utiities";
 import ZoomTopRight from "./ZoomtoRight";
 import RoutingMachine from "./RoutingMachine";
+import SpinnerComponent from "../Spinner/Spinner";
+import InfoModal from "../InfoModal/InfoModal";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -59,6 +62,8 @@ const MapRoute = () => {
   const [center, setCenter] = useState<[number, number]>([0, 0]);
   const [transportationProbelm, setTransportationProblem] =
     useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [infoModal, setInfoModal] = useState<InfoModal | null>(null);
 
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -335,7 +340,6 @@ const MapRoute = () => {
       .catch((err) => console.error("Fetch error:", err));
   };
 
-
   const getMDVRPProblem = async (
     depots: Depot[],
     customers: Customer[],
@@ -347,7 +351,7 @@ const MapRoute = () => {
     console.log("Depots:", depots);
     console.log("Customers:", customers);
     console.log("Vehicles:", vehicles);
-    
+
     fetch(`http://127.0.0.1:5100/mdvrp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -363,45 +367,51 @@ const MapRoute = () => {
         setMDVRPProblem(data);
         console.log("MDVRP problem:", data);
         setRouteCoords(makeRouteList(data.routes));
+        setLoading(false);
       })
       .catch((err) => console.error("Fetch error:", err));
   };
 
+  const getCoordinatesFromName = (
+    name: string,
+  ): [number, number] | undefined => {
+    const depot = depots.find((d) =>
+      d.depot_name?.toLowerCase().includes(name.toLowerCase()),
+    );
+    if (depot) return [depot.depot_x, depot.depot_y];
 
-const getCoordinatesFromName = (name: string): [number, number] | undefined => {
-  const depot = depots.find(d => d.depot_name?.toLowerCase().includes(name.toLowerCase()));
-  if (depot) return [depot.depot_x, depot.depot_y];
+    const customer = customers.find((c) =>
+      c.customer_name?.toLowerCase().includes(name.toLowerCase()),
+    );
+    if (customer) return [customer.customer_x, customer.customer_y];
 
-  const customer = customers.find(c => c.customer_name?.toLowerCase().includes(name.toLowerCase()));
-  if (customer) return [customer.customer_x, customer.customer_y];
+    console.warn("No coordinates found for", name);
+    return undefined;
+  };
 
-  console.warn("No coordinates found for", name);
-  return undefined;
-};
+  const makeRouteList = (
+    routeArray: { id: string; route: string[] }[],
+  ): Route[] => {
+    return routeArray.map((route_info) => {
+      const coords: [number, number][] = [];
 
+      route_info.route.forEach((name) => {
+        const point = getCoordinatesFromName(name);
+        console.log(name, point);
+        if (point) coords.push(point);
+      });
 
+      // return to origin
+      if (coords.length > 0) coords.push(coords[0]);
 
-const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] => {
-  return routeArray.map(route_info => {
-    const coords: [number, number][] = [];
+      console.log("Route", route_info.route[0], ":", coords);
 
-    route_info.route.forEach(name => {
-      const point = getCoordinatesFromName(name);
-      console.log(name, point);
-      if (point) coords.push(point); 
+      return {
+        id: route_info.id,
+        route: coords,
+      };
     });
-
-    // return to origin
-    if (coords.length > 0) coords.push(coords[0]);
-
-    console.log("Route", route_info.route[0], ":", coords);
-
-    return {
-      id: route_info.id,
-      route: coords,
-    };
-  });
-};
+  };
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
@@ -420,8 +430,8 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
         }}
         className="m-4 rounded-5 p-5"
       >
-        <div className="d-flex justify-content-between align-items-center">
-          <h1 className="fw-bold fs-2 mb-5">Parameters</h1>
+        <div className="d-flex align-items-center justify-content-center mb-4">
+          <h1 className="fw-bold fs-2 me-3">Parameters</h1>
         </div>
         <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 300px)" }}>
           {" "}
@@ -478,19 +488,19 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
                 <div>
                   <strong>{d.depot_name}</strong>
                   <div style={{ marginTop: "4px" }}>
-                    <span style={{ fontWeight: 500 }}>Coordinates:</span>  (
+                    <span style={{ fontWeight: 500 }}>Coordinates:</span> (
                     {d.depot_x.toFixed(4)}, {d.depot_y.toFixed(4)})
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Capacity:</span> {" "}
+                    <span style={{ fontWeight: 500 }}>Capacity:</span>{" "}
                     {d.capacity}
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Max Distance:</span> {" "}
+                    <span style={{ fontWeight: 500 }}>Max Distance:</span>{" "}
                     {d.maxDistance ?? "N/A"}
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Type:</span> {" "}
+                    <span style={{ fontWeight: 500 }}>Type:</span>{" "}
                     {d.type || "N/A"}
                   </div>
                 </div>
@@ -520,12 +530,13 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
               <li key={v.id} className="list-item">
                 <div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Capacity:</span> {" "}
+                    <span style={{ fontWeight: 500 }}>Capacity:</span>{" "}
                     {v.capacity}
                   </div>
                   <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Depot:</span> {" "}
-                    {depots.find((d) => d.id === v.depot_id)?.depot_name || "N/A"}
+                    <span style={{ fontWeight: 500 }}>Depot:</span>{" "}
+                    {depots.find((d) => d.id === v.depot_id)?.depot_name ||
+                      "N/A"}
                   </div>
                 </div>
                 <div className="delete-btn-wrapper">
@@ -540,21 +551,33 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
             ))}
           </ul>
         </div>
-        <div className="d-flex justify-content-center align-items-center ms-4">
+        {/* Wrapper holds BOTH the button + ? */}
+        <div
+          className="d-flex align-items-center justify-content-between"
+          style={{
+            position: "absolute",
+            bottom: "20px",
+            right: "20px",
+            gap: "40px",
+          }}
+        >
+          {/* Question Mark */}
+          <BsFillQuestionCircleFill
+            style={{ cursor: "pointer" }}
+            onClick={() => setInfoModal(true)}
+            color="#007BFF"
+            size={50}
+            className="button-circle bg-white"
+          />
+
+          {/* Calculate Button */}
           <Button
             variant="primary"
-            className="fw-bold fs-5 position-absolute rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-4 w-100 mt-1 mb-4 button-circle"
-            style={{
-              bottom: "0px",
-              right: "20px",
-              paddingBottom: "40px !important",
-              paddingTop: "10px !important",
-              maxWidth: "200px",
-            }}
+            className="fw-bold fs-5 rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-2"
+            style={{ maxWidth: "200px" }}
             onClick={() => {
-              
-              // getTransportationProblem(depots, customers); 
-              getMDVRPProblem(depots, customers, vehicles)
+              setLoading(true);
+              getMDVRPProblem(depots, customers, vehicles);
             }}
           >
             <span className="me-3">Calculate</span>
@@ -562,7 +585,7 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
               className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
               style={{ width: "32px", height: "32px" }}
             >
-              <FaArrowRight size={14} />
+              {loading ? <SpinnerComponent /> : <FaArrowRight size={14} />}
             </span>
           </Button>
         </div>
@@ -605,7 +628,7 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
           <FaPlus />
         </button>
 
-        <p className="text-custom-color-grey-lighter fw-bold fs-3 m-0 ps-2">
+        <p className="text-custom-color-grey-lighter fw-bold fs-4 m-0 ps-2">
           {title}
         </p>
       </div>
@@ -691,18 +714,24 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
       </button>
 
       {/* Map */}
-      <MapContainer center={center} zoom={7} style={{ height: "100%", width: "100%" }}>
+      <MapContainer
+        center={center}
+        zoom={7}
+        style={{ height: "100%", width: "100%" }}
+      >
         <ZoomTopRight />
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {routeCoords === undefined ? null : routeCoords
-          ?.filter((r) => r.route?.length && r.route.length > 1)
-          .map((coord, index) => (
-            <RoutingMachine
-              key={coord.id}
-              route={coord.route}
-              color={index === 0 ? "red" : "blue"}
-            />
-          ))}
+        {routeCoords === undefined
+          ? null
+          : routeCoords
+              ?.filter((r) => r.route?.length && r.route.length > 1)
+              .map((coord, index) => (
+                <RoutingMachine
+                  key={coord.id}
+                  route={coord.route}
+                  color={index === 0 ? "red" : "blue"}
+                />
+              ))}
 
         {validCustomers.map((c) => (
           <Marker key={c.id} position={getLatLng(c)} icon={redIcon} />
@@ -910,6 +939,7 @@ const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] =
           </Button>
         </Modal.Footer>
       </Modal>
+      <InfoModal show={infoModal} onHide={() => setInfoModal(false)} />
     </div>
   );
 };

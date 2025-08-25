@@ -24,11 +24,10 @@ const RoutingMachine: React.FC<RoutingProps> = ({ route, color = "blue" }) => {
       show: false,
       itinerary: false,
       fitSelectedRoutes: false,
-
     }).addTo(map);
 
     // Additional CSS to hide any remaining elements
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.innerHTML = `
       .leaflet-routing-container {
         display: none !important;

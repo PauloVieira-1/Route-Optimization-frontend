@@ -203,8 +203,6 @@ const getCostMatrix = async (
   }
 };
 
-
-
 // Icons
 
 const redIcon = new L.Icon({
