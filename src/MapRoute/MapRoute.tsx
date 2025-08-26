@@ -4,7 +4,6 @@ import {
   MapContainer,
   TileLayer,
   Marker,
-  Polyline,
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -14,9 +13,10 @@ import {
   FaPlus,
   FaTimes,
   FaHouseUser,
+  FaExclamationTriangle,
 } from "react-icons/fa";
 import { BsFillQuestionCircleFill } from "react-icons/bs";
-import { Modal, Button, Form } from "react-bootstrap";
+import { Modal, Button, Form, Alert } from "react-bootstrap";
 import "./MapRoute.css";
 import { Link } from "react-router-dom";
 import type { Customer, Depot, Vehicle, Route } from "../types";
@@ -35,6 +35,8 @@ import ZoomTopRight from "./ZoomtoRight";
 import RoutingMachine from "./RoutingMachine";
 import SpinnerComponent from "../Spinner/Spinner";
 import InfoModal from "../InfoModal/InfoModal";
+import InputValidator from "../validator";
+import { CoordinateValidator } from "./coordinnateValidator";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -45,6 +47,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl:
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
 });
+
 
 function RecenterMap({ center }: { center: [number, number] }) {
   const map = useMap();
@@ -65,14 +68,15 @@ const MapRoute = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [infoModal, setInfoModal] = useState<InfoModal | null>(null);
 
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [coordinateWarnings, setCoordinateWarnings] = useState<string[]>([]);
+
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [depots, setDepots] = useState<Depot[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [mdvrpProblem, setMDVRPProblem] = useState<string>("");
-
-  // const [depotPoints, setDepotPoints] = useState<[number, number][]>([]);
-  // const [vehiclePoints, setVehiclePoints] = useState<[number, number][]>([]);
 
   const { id } = useParams<{ id: string }>();
   const scenarioId = parseInt(id || "", 10);
@@ -90,6 +94,9 @@ const MapRoute = () => {
       depots.filter((d) => d.depot_x !== undefined && d.depot_y !== undefined),
     [depots],
   );
+
+  const inputValidator = useMemo(() => new InputValidator(), []);
+
 
   useEffect(() => {
     fetch("http://127.0.0.1:5100/scenarios_by_id", {
@@ -130,12 +137,50 @@ const MapRoute = () => {
     depot_id: 0,
   });
 
+  useEffect(() => {
+  if (customers && depots && vehicles) {
+    inputValidator.setData(customers, depots, vehicles);
+  }
+}, [customers, depots, vehicles, inputValidator]);
+
+
   // Modal states
   const [showModal, setShowModal] = useState<
     "customer" | "depot" | "vehicle" | null
   >(null);
 
-  // Fetch route for map
+  // Validation state for modal inputs
+  const [modalValidationError, setModalValidationError] = useState<string>("");
+
+  // Validate modal input coordinates
+  const validateModalInput = (lat: number, lng: number): boolean => {
+    setModalValidationError("");
+    
+    const validation = CoordinateValidator.validateCoordinate(lat, lng);
+    if (!validation.valid) {
+      setModalValidationError(validation.error || "Invalid coordinates");
+      return false;
+    }
+
+    // Check for duplicates with existing coordinates
+    const allExisting = [
+      ...customers.map(c => ({ lat: c.customer_x, lng: c.customer_y, name: c.customer_name, type: 'Customer' })),
+      ...depots.map(d => ({ lat: d.depot_x, lng: d.depot_y, name: d.depot_name, type: 'Depot' }))
+    ];
+
+    for (const existing of allExisting) {
+      if (CoordinateValidator.areCoordinatesTooClose(lat, lng, existing.lat, existing.lng, 100)) {
+        setModalValidationError(
+          `Coordinates are too close to existing ${existing.type} "${existing.name}"`
+        );
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Fetch route for map (keeping original logic but adding validation)
   useEffect(() => {
     if (validCustomers.length < 2) return;
 
@@ -169,11 +214,20 @@ const MapRoute = () => {
     fetchRoute();
   }, [customers]);
 
+  useEffect(() => {
+  validateAll();
+}, [customers, depots, vehicles, routeCoords]);
+
   ///////////////
   // CUSTOMERS //
   ///////////////
 
   const addCustomer = () => {
+    // Validate coordinates before adding
+    if (!validateModalInput(customerInput.customer_x, customerInput.customer_y)) {
+      return;
+    }
+
     const current_id = get_date_time();
     fetch("http://127.0.0.1:5100/customers", {
       method: "POST",
@@ -194,6 +248,7 @@ const MapRoute = () => {
           customer_name: "",
         });
         setShowModal(null);
+        setModalValidationError("");
       })
       .catch((err) => console.error("Failed to add customer:", err));
   };
@@ -216,10 +271,15 @@ const MapRoute = () => {
   };
 
   ///////////////
-  // CUSTOMERS //
+  // DEPOTS //
   ///////////////
 
   const addDepot = () => {
+    // Validate coordinates before adding
+    if (!validateModalInput(depotInput.depot_x, depotInput.depot_y)) {
+      return;
+    }
+
     const current_id = get_date_time();
 
     fetch(`http://127.0.0.1:5100/depots`, {
@@ -243,6 +303,7 @@ const MapRoute = () => {
           type: "",
         });
         setShowModal(null);
+        setModalValidationError("");
       })
       .catch((err) => console.error("Failed to add depot:", err));
   };
@@ -313,15 +374,66 @@ const MapRoute = () => {
   // OVERLAY MENU //
   /////////////////
 
+  const validateAll = () => {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  // Customer validation
+  customers.forEach((customer) => {
+    if (customer.customer_x !== undefined && customer.customer_y !== undefined) {
+      const validation = CoordinateValidator.validateCoordinate(
+        customer.customer_x,
+        customer.customer_y
+      );
+      if (!validation.valid) {
+        errors.push(`Customer "${customer.customer_name}": ${validation.error}`);
+      }
+    }
+  });
+
+  // Depot validation
+  depots.forEach((depot) => {
+    if (depot.depot_x !== undefined && depot.depot_y !== undefined) {
+      const validation = CoordinateValidator.validateCoordinate(
+        depot.depot_x,
+        depot.depot_y
+      );
+      if (!validation.valid) {
+        errors.push(`Depot "${depot.depot_name}": ${validation.error}`);
+      }
+    }
+  });
+
+  // Route validation
+  routeCoords.forEach((r) => {
+    if (!r.route?.length || r.route.length < 2) {
+      errors.push(`Route ${r.id} has too few points`);
+    } else {
+      r.route.forEach(([lat, lng], i) => {
+        const validation = CoordinateValidator.validateCoordinate(lat, lng);
+        if (!validation.valid) {
+          errors.push(`Route ${r.id}, point ${i + 1}: ${validation.error}`);
+        }
+      });
+    }
+  });
+
+  // InputValidator
+  inputValidator.setData(customers, depots, vehicles);
+  if (!inputValidator.isValid()) {
+    errors.push(...inputValidator.getErrors());
+  }
+
+  setValidationErrors(errors);
+  setCoordinateWarnings(warnings);
+};
+
+
   const getTransportationProblem = async (
     depots: Depot[],
     customers: Customer[],
   ) => {
     const costMatrix: number[][] = await getCostMatrix(depots, customers);
-    // console.log("Cost matrix:", costMatrix);
-    // console.log("Depots:", depots);
-    // console.log("Customers:", customers);
-    // console.log("Vehicles:", vehicles);
 
     fetch(`http://127.0.0.1:5100/solvetp`, {
       method: "POST",
@@ -335,7 +447,6 @@ const MapRoute = () => {
       .then((res) => res.json())
       .then((data) => {
         setTransportationProblem(data);
-        console.log(data);
       })
       .catch((err) => console.error("Fetch error:", err));
   };
@@ -345,12 +456,14 @@ const MapRoute = () => {
     customers: Customer[],
     vehicles: Vehicle[],
   ) => {
-    const costMatrix: number[][] = await getCostMatrix(depots, customers);
+    // Check for coordinate validation errors before proceeding
+    if (validationErrors.length > 0) {
+      setLoading(false);
+      alert("Please fix coordinate validation errors before calculating routes.");
+      return;
+    }
 
-    console.log("Cost matrix:", costMatrix);
-    console.log("Depots:", depots);
-    console.log("Customers:", customers);
-    console.log("Vehicles:", vehicles);
+    const costMatrix: number[][] = await getCostMatrix(depots, customers);
 
     fetch(`http://127.0.0.1:5100/mdvrp`, {
       method: "POST",
@@ -365,11 +478,22 @@ const MapRoute = () => {
       .then((res) => res.json())
       .then((data) => {
         setMDVRPProblem(data);
-        console.log("MDVRP problem:", data);
         setRouteCoords(makeRouteList(data.routes));
+        validateAll()
         setLoading(false);
+
+        if (!inputValidator.isValid()) {
+          console.log("Validation errors:", inputValidator.getErrors());
+          setValidationErrors([...validationErrors, ...inputValidator.getErrors()]);
+          return;
+        }
+        inputValidator.resetErrors();
+
       })
-      .catch((err) => console.error("Fetch error:", err));
+      .catch((err) => {
+        console.error("Fetch error:", err);
+        setLoading(false);
+      });
   };
 
   const getCoordinatesFromName = (
@@ -397,15 +521,11 @@ const MapRoute = () => {
 
       route_info.route.forEach((name) => {
         const point = getCoordinatesFromName(name);
-        console.log(name, point);
         if (point) coords.push(point);
       });
 
       // return to origin
       if (coords.length > 0) coords.push(coords[0]);
-
-      console.log("Route", route_info.route[0], ":", coords);
-
       return {
         id: route_info.id,
         route: coords,
@@ -413,8 +533,93 @@ const MapRoute = () => {
     });
   };
 
+  // Enhanced route rendering with validation
+  const renderRoutes = () => {
+    if (!routeCoords) return null;
+
+    const invalidRoutes: string[] = [];
+    
+    const validRouteCoords = routeCoords
+      ?.filter((r) => {
+        if (!r.route?.length || r.route.length < 2) {
+          return false;
+        }
+
+        // Validate each coordinate in the route
+        for (let i = 0; i < r.route.length; i++) {
+          const [lat, lng] = r.route[i];
+          const validation = CoordinateValidator.validateCoordinate(lat, lng);
+          
+          if (!validation.valid) {
+            invalidRoutes.push(`Route ${r.id}: Point ${i + 1} - ${validation.error}`);
+            return false;
+          }
+
+          // Check for duplicate points in the same route
+          // for (let j = i + 1; j < r.route.length; j++) {
+          //   const [lat2, lng2] = r.route[j];
+          //   if (CoordinateValidator.areCoordinatesTooClose(lat, lng, lat2, lng2)) {
+          //     invalidRoutes.push(
+          //       `Route ${r.id}: Points ${i + 1} and ${j + 1} are too close`
+          //     );
+          //     return false;
+          //   }
+          // }
+        }
+
+        return true;
+      });
+
+    return validRouteCoords?.map((coord, index) => (
+      <RoutingMachine
+        key={coord.id}
+        route={coord.route}
+        color={index === 0 ? "red" : "blue"}
+        inputValidator={inputValidator}
+      />
+    ));
+  };
+
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
+      {/* Validation Alerts */}
+      {(validationErrors.length > 0 || coordinateWarnings.length > 0) && (
+        <div
+          style={{
+            position: "absolute",
+            top: "20%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 1500,
+            maxWidth: "500px",
+          }}
+        >
+          {validationErrors.length > 0 && (
+            <Alert variant="danger" className="mb-2">
+              <Alert.Heading>
+                <FaExclamationTriangle className="me-2" />
+                Coordinate Validation Errors
+              </Alert.Heading>
+              <ul className="mb-0">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </Alert>
+          )}
+          {coordinateWarnings.length > 0 && (
+            <Alert variant="warning" className="mb-2">
+              <Alert.Heading>Coordinate Warnings</Alert.Heading>
+              <ul className="mb-0">
+                {coordinateWarnings.map((warning, index) => (
+                  <li key={index}>{warning}</li>
+                ))}
+              </ul>
+            </Alert>
+          )}
+        </div>
+      )}
+
       {/* Top-left overlay */}
       <div
         style={{
@@ -434,8 +639,6 @@ const MapRoute = () => {
           <h1 className="fw-bold fs-2 me-3">Parameters</h1>
         </div>
         <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 300px)" }}>
-          {" "}
-          {/* TEST */}
           {/* Customers Section */}
           <div className="section-header">
             <h4 className="fw-bold">Customers</h4>
@@ -448,29 +651,38 @@ const MapRoute = () => {
           </div>
           <hr className="w-100 mb-4" />
           <ul className="list">
-            {customers?.map((c) => (
-              <li key={c.id} className="list-item">
-                <div>
-                  <strong>{c.customer_name}</strong>
-                  <div style={{ marginTop: "4px" }}>
-                    <span style={{ fontWeight: 500 }}>Coordinates:</span> (
-                    {c.customer_x.toFixed(4)}, {c.customer_y.toFixed(4)})
+            {customers?.map((c) => {
+              const hasError = validationErrors.some(error => 
+                error.includes(`Customer "${c.customer_name}"`)
+              );
+              return (
+                <li key={c.id} className={`list-item ${hasError ? 'border-danger' : ''}`}>
+                  <div>
+                    <strong className={hasError ? 'text-danger' : ''}>
+                      {c.customer_name}
+                      {hasError && <FaExclamationTriangle className="ms-1 text-danger" size={12} />}
+                    </strong>
+                    <div style={{ marginTop: "4px" }}>
+                      <span style={{ fontWeight: 500 }}>Coordinates:</span> (
+                      {c.customer_x.toFixed(4)}, {c.customer_y.toFixed(4)})
+                    </div>
+                    <div style={{ marginTop: "2px" }}>
+                      <span style={{ fontWeight: 500 }}>Demand:</span> {c.demand}
+                    </div>
                   </div>
-                  <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Demand:</span> {c.demand}
+                  <div className="delete-btn-wrapper">
+                    <button
+                      className="delete-btn button-circle"
+                      onClick={() => removeCustomer(c.id)}
+                    >
+                      <FaTimes size={12} />
+                    </button>
                   </div>
-                </div>
-                <div className="delete-btn-wrapper">
-                  <button
-                    className="delete-btn button-circle"
-                    onClick={() => removeCustomer(c.id)}
-                  >
-                    <FaTimes size={12} />
-                  </button>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
+
           {/* Depots Section */}
           <div className="section-header">
             <h4 className="fw-bold">Depots</h4>
@@ -483,38 +695,47 @@ const MapRoute = () => {
           </div>
           <hr className="w-100 mb-4" />
           <ul className="list">
-            {depots?.map((d) => (
-              <li key={d.id} className="list-item">
-                <div>
-                  <strong>{d.depot_name}</strong>
-                  <div style={{ marginTop: "4px" }}>
-                    <span style={{ fontWeight: 500 }}>Coordinates:</span> (
-                    {d.depot_x.toFixed(4)}, {d.depot_y.toFixed(4)})
+            {depots?.map((d) => {
+              const hasError = validationErrors.some(error => 
+                error.includes(`Depot "${d.depot_name}"`)
+              );
+              return (
+                <li key={d.id} className={`list-item ${hasError ? 'border-danger' : ''}`}>
+                  <div>
+                    <strong className={hasError ? 'text-danger' : ''}>
+                      {d.depot_name}
+                      {hasError && <FaExclamationTriangle className="ms-1 text-danger" size={12} />}
+                    </strong>
+                    <div style={{ marginTop: "4px" }}>
+                      <span style={{ fontWeight: 500 }}>Coordinates:</span> (
+                      {d.depot_x.toFixed(4)}, {d.depot_y.toFixed(4)})
+                    </div>
+                    <div style={{ marginTop: "2px" }}>
+                      <span style={{ fontWeight: 500 }}>Capacity:</span>{" "}
+                      {d.capacity}
+                    </div>
+                    <div style={{ marginTop: "2px" }}>
+                      <span style={{ fontWeight: 500 }}>Max Distance:</span>{" "}
+                      {d.maxDistance ?? "N/A"}
+                    </div>
+                    <div style={{ marginTop: "2px" }}>
+                      <span style={{ fontWeight: 500 }}>Type:</span>{" "}
+                      {d.type || "N/A"}
+                    </div>
                   </div>
-                  <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Capacity:</span>{" "}
-                    {d.capacity}
+                  <div className="delete-btn-wrapper">
+                    <button
+                      className="delete-btn button-circle"
+                      onClick={() => removeDepot(d.id)}
+                    >
+                      <FaTimes size={12} />
+                    </button>
                   </div>
-                  <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Max Distance:</span>{" "}
-                    {d.maxDistance ?? "N/A"}
-                  </div>
-                  <div style={{ marginTop: "2px" }}>
-                    <span style={{ fontWeight: 500 }}>Type:</span>{" "}
-                    {d.type || "N/A"}
-                  </div>
-                </div>
-                <div className="delete-btn-wrapper">
-                  <button
-                    className="delete-btn button-circle"
-                    onClick={() => removeDepot(d.id)}
-                  >
-                    <FaTimes size={12} />
-                  </button>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
+
           {/* Vehicles Section */}
           <div className="section-header">
             <h4 className="fw-bold"> Vehicles</h4>
@@ -551,7 +772,8 @@ const MapRoute = () => {
             ))}
           </ul>
         </div>
-        {/* Wrapper holds BOTH the button + ? */}
+
+        {/* Calculate Button with validation check */}
         <div
           className="d-flex align-items-center justify-content-between"
           style={{
@@ -572,24 +794,36 @@ const MapRoute = () => {
 
           {/* Calculate Button */}
           <Button
-            variant="primary"
+            variant={validationErrors.length > 0 ? "danger" : "primary"}
             className="fw-bold fs-5 rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-2"
             style={{ maxWidth: "200px" }}
+            disabled={validationErrors.length > 0 || loading}
             onClick={() => {
               setLoading(true);
               getMDVRPProblem(depots, customers, vehicles);
             }}
+            title={validationErrors.length > 0 ? "Fix coordinate errors first" : "Calculate routes"}
           >
-            <span className="me-3">Calculate</span>
+            <span className="me-3">
+              {validationErrors.length > 0 ? "Fix Errors" : "Calculate"}
+            </span>
             <span
               className="d-flex justify-content-center align-items-center rounded-circle bg-white text-primary"
               style={{ width: "32px", height: "32px" }}
             >
-              {loading ? <SpinnerComponent /> : <FaArrowRight size={14} />}
+              {loading ? (
+                <SpinnerComponent />
+              ) : validationErrors.length > 0 ? (
+                <FaExclamationTriangle size={14} color="#dc3545"/>
+              ) : (
+                <FaArrowRight size={14} />
+              )}
             </span>
           </Button>
         </div>
       </div>
+
+      {/* Rest of your existing UI elements... */}
       <div
         style={{
           position: "absolute",
@@ -721,17 +955,7 @@ const MapRoute = () => {
       >
         <ZoomTopRight />
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {routeCoords === undefined
-          ? null
-          : routeCoords
-              ?.filter((r) => r.route?.length && r.route.length > 1)
-              .map((coord, index) => (
-                <RoutingMachine
-                  key={coord.id}
-                  route={coord.route}
-                  color={index === 0 ? "red" : "blue"}
-                />
-              ))}
+        {renderRoutes()}
 
         {validCustomers.map((c) => (
           <Marker key={c.id} position={getLatLng(c)} icon={redIcon} />
@@ -741,10 +965,14 @@ const MapRoute = () => {
         ))}
         <RecenterMap center={center} />
       </MapContainer>
+      
       {/* Modal */}
       <Modal
         show={showModal !== null}
-        onHide={() => setShowModal(null)}
+        onHide={() => {
+          setShowModal(null);
+          setModalValidationError("");
+        }}
         style={{ zIndex: 1200 }}
       >
         <Modal.Header closeButton>
@@ -755,6 +983,13 @@ const MapRoute = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {modalValidationError && (
+            <Alert variant="danger" className="mb-3">
+              <FaExclamationTriangle className="me-2" />
+              {modalValidationError}
+            </Alert>
+          )}
+
           {showModal === "customer" && (
             <>
               <Form.Group className="mb-2">
@@ -769,29 +1004,43 @@ const MapRoute = () => {
                     })
                   }
                 />
-                <Form.Label>X</Form.Label>
+                <Form.Label>X (Latitude)</Form.Label>
                 <Form.Control
                   type="number"
+                  step="any"
                   value={customerInput.customer_x}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
                     setCustomerInput({
                       ...customerInput,
-                      customer_x: Number(e.target.value),
-                    })
-                  }
+                      customer_x: value,
+                    });
+                    // Real-time validation
+                    if (customerInput.customer_y !== 0) {
+                      validateModalInput(value, customerInput.customer_y);
+                    }
+                  }}
+                  className={modalValidationError ? "is-invalid" : ""}
                 />
               </Form.Group>
               <Form.Group className="mb-2">
-                <Form.Label>Y</Form.Label>
+                <Form.Label>Y (Longitude)</Form.Label>
                 <Form.Control
                   type="number"
+                  step="any"
                   value={customerInput.customer_y}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
                     setCustomerInput({
                       ...customerInput,
-                      customer_y: Number(e.target.value),
-                    })
-                  }
+                      customer_y: value,
+                    });
+                    // Real-time validation
+                    if (customerInput.customer_x !== 0) {
+                      validateModalInput(customerInput.customer_x, value);
+                    }
+                  }}
+                  className={modalValidationError ? "is-invalid" : ""}
                 />
               </Form.Group>
               <Form.Group className="mb-2">
@@ -807,6 +1056,19 @@ const MapRoute = () => {
                   }
                 />
               </Form.Group>
+              <div className="mt-3 p-2 bg-light rounded">
+                <small className="text-muted">
+                  <strong>Coordinate Guidelines:</strong>
+                  <br />
+                  • Latitude must be between -90 and 90
+                  <br />
+                  • Longitude must be between -180 and 180
+                  <br />
+                  • Avoid ocean coordinates (0,0) or remote areas
+                  <br />
+                  • Ensure coordinates are on accessible land
+                </small>
+              </div>
             </>
           )}
 
@@ -823,29 +1085,43 @@ const MapRoute = () => {
                 />
               </Form.Group>
               <Form.Group className="mb-2">
-                <Form.Label>x</Form.Label>
+                <Form.Label>X (Latitude)</Form.Label>
                 <Form.Control
                   type="number"
+                  step="any"
                   value={depotInput.depot_x}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
                     setDepotInput({
                       ...depotInput,
-                      depot_x: Number(e.target.value),
-                    })
-                  }
+                      depot_x: value,
+                    });
+                    // Real-time validation
+                    if (depotInput.depot_y !== 0) {
+                      validateModalInput(value, depotInput.depot_y);
+                    }
+                  }}
+                  className={modalValidationError ? "is-invalid" : ""}
                 />
               </Form.Group>
               <Form.Group className="mb-2">
-                <Form.Label>y</Form.Label>
+                <Form.Label>Y (Longitude)</Form.Label>
                 <Form.Control
                   type="number"
+                  step="any"
                   value={depotInput.depot_y}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
                     setDepotInput({
                       ...depotInput,
-                      depot_y: Number(e.target.value),
-                    })
-                  }
+                      depot_y: value,
+                    });
+                    // Real-time validation
+                    if (depotInput.depot_x !== 0) {
+                      validateModalInput(depotInput.depot_x, value);
+                    }
+                  }}
+                  className={modalValidationError ? "is-invalid" : ""}
                 />
               </Form.Group>
               <Form.Group className="mb-2">
@@ -884,6 +1160,19 @@ const MapRoute = () => {
                   }
                 />
               </Form.Group>
+              <div className="mt-3 p-2 bg-light rounded">
+                <small className="text-muted">
+                  <strong>Coordinate Guidelines:</strong>
+                  <br />
+                  • Latitude must be between -90 and 90
+                  <br />
+                  • Longitude must be between -180 and 180
+                  <br />
+                  • Avoid ocean coordinates (0,0) or remote areas
+                  <br />
+                  • Ensure coordinates are on accessible land
+                </small>
+              </div>
             </>
           )}
 
@@ -927,18 +1216,30 @@ const MapRoute = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button
+            variant="secondary"
+            onClick={() => {
+              setShowModal(null);
+              setModalValidationError("");
+            }}
+            className="rounded-pill px-4"
+          >
+            Cancel
+          </Button>
+          <Button
             variant="primary"
             onClick={() => {
               if (showModal === "customer") addCustomer();
               if (showModal === "depot") addDepot();
               if (showModal === "vehicle") addVehicle();
             }}
-            className="rounded-pill button-circle bg-custom-color-grey-lighter mx-1 px-5 py-4"
+            disabled={modalValidationError !== ""}
+            className="rounded-pill px-4"
           >
             Add
           </Button>
         </Modal.Footer>
       </Modal>
+      
       <InfoModal show={infoModal} onHide={() => setInfoModal(false)} />
     </div>
   );
