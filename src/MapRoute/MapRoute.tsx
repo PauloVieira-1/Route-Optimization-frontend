@@ -487,6 +487,8 @@ const MapRoute = () => {
           setValidationErrors([...validationErrors, ...inputValidator.getErrors()]);
           return;
         }
+                validateAll()
+
         inputValidator.resetErrors();
 
       })
