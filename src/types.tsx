@@ -27,6 +27,4 @@ interface Route {
   route: [number, number][];
 }
 
-
-
 export type { Customer, Depot, Vehicle, Route };

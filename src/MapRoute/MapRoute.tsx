@@ -1,397 +1,457 @@
-  import { useEffect, useState, useMemo } from "react";
-  import {
-    MapContainer,
-    TileLayer,
-    Marker,
-    useMap,
-  } from "react-leaflet";
-  import "leaflet/dist/leaflet.css";
-  import {
-    FaArrowRight,
-    FaArrowLeft,
-    FaPlus,
-    FaTimes,
-    FaHouseUser,
-    FaExclamationTriangle,
-  } from "react-icons/fa";
-  import { BsFillQuestionCircleFill } from "react-icons/bs";
-  import { Modal, Button, Form, Alert } from "react-bootstrap";
-  import "./MapRoute.css";
-  import { Link, useParams } from "react-router-dom";
-  import type { Customer, Depot, Vehicle, Route } from "../types";
-  import {
-    get_date_time,
-    getLatLng,
-    getLngLat,
-    getFirstLatLng,
-    redIcon,
-    blueIcon,
-    getLatLngDepot,
-    getCostMatrix,
-  } from "./utiities";
-  import ZoomTopRight from "./ZoomtoRight";
-  import RoutingMachine from "./RoutingMachine";
-  import SpinnerComponent from "../Spinner/Spinner";
-  import InfoModal from "../InfoModal/InfoModal";
-  import InputValidator from "../validator";
-  import { validateData } from "./validation";
-  import Validator from "../validator";
-  
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-    iconUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-    shadowUrl:
-      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+import { useEffect, useState, useMemo } from "react";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import {
+  FaArrowRight,
+  FaArrowLeft,
+  FaPlus,
+  FaTimes,
+  FaHouseUser,
+  FaExclamationTriangle,
+} from "react-icons/fa";
+import { BsFillQuestionCircleFill } from "react-icons/bs";
+import { Modal, Button, Form, Alert } from "react-bootstrap";
+import "./MapRoute.css";
+import { Link, useParams } from "react-router-dom";
+import type { Customer, Depot, Vehicle, Route } from "../types";
+import {
+  get_date_time,
+  getLatLng,
+  getLngLat,
+  getFirstLatLng,
+  redIcon,
+  blueIcon,
+  getLatLngDepot,
+  getCostMatrix,
+} from "./utiities";
+import ZoomTopRight from "./ZoomtoRight";
+import RoutingMachine from "./RoutingMachine";
+import SpinnerComponent from "../Spinner/Spinner";
+import InfoModal from "../InfoModal/InfoModal";
+import InputValidator from "../validator";
+import { validateData } from "./validation";
+import Validator from "../validator";
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+function RecenterMap({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+}
+
+const MapRoute = () => {
+  const [routeCoords, setRouteCoords] = useState<Route[]>([]);
+  const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [title, setTitle] = useState("Scenario");
+  const [center, setCenter] = useState<[number, number]>([0, 0]);
+  const [transportationProbelm, setTransportationProblem] =
+    useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [infoModal, setInfoModal] = useState<boolean>(false);
+
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [modalValidationError, setModalValidationError] = useState<string>("");
+
+  // Customers, Depots, Vehicles states
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [depots, setDepots] = useState<Depot[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [mdvrpProblem, setMDVRPProblem] = useState<string>("");
+
+  // Modal states
+  const [showModal, setShowModal] = useState<
+    "customer" | "depot" | "vehicle" | null
+  >(null);
+
+  const { id } = useParams<{ id: string }>();
+  const scenarioId = parseInt(id || "", 10);
+
+  const validCustomers = useMemo(
+    () =>
+      customers.filter(
+        (c) => c.customer_x !== undefined && c.customer_y !== undefined,
+      ),
+    [customers],
+  );
+
+  const validDepots = useMemo(
+    () =>
+      depots.filter((d) => d.depot_x !== undefined && d.depot_y !== undefined),
+    [depots],
+  );
+
+  const inputValidator = useMemo(() => new InputValidator(), []);
+
+  // Input states for modal
+  const [customerInput, setCustomerInput] = useState({
+    customer_x: 0,
+    customer_y: 0,
+    demand: 0,
+    customer_name: "",
   });
-  
-  function RecenterMap({ center }: { center: [number, number] }) {
-    const map = useMap();
-    useEffect(() => {
-      map.setView(center, map.getZoom());
-    }, [center, map]);
-    return null;
-  }
-  
-  const MapRoute = () => {
-    const [routeCoords, setRouteCoords] = useState<Route[]>([]);
-    const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
-    const [isOverlayOpen, setIsOverlayOpen] = useState(false);
-    const [title, setTitle] = useState("Scenario");
-    const [center, setCenter] = useState<[number, number]>([0, 0]);
-    const [transportationProbelm, setTransportationProblem] = useState<string>("");
-    const [loading, setLoading] = useState<boolean>(false);
-    const [infoModal, setInfoModal] = useState<boolean>(false);
-  
-    // Validation states
-    const [validationErrors, setValidationErrors] = useState<string[]>([]);
-    const [modalValidationError, setModalValidationError] = useState<string>("");
-  
-    // Customers, Depots, Vehicles states
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [depots, setDepots] = useState<Depot[]>([]);
-    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-    const [mdvrpProblem, setMDVRPProblem] = useState<string>("");
-  
-    // Modal states
-    const [showModal, setShowModal] = useState<"customer" | "depot" | "vehicle" | null>(null);
-  
-    const { id } = useParams<{ id: string }>();
-    const scenarioId = parseInt(id || "", 10);
-  
-    const validCustomers = useMemo(
-      () =>
-        customers.filter(
-          (c) => c.customer_x !== undefined && c.customer_y !== undefined,
-        ),
-      [customers],
-    );
-  
-    const validDepots = useMemo(
-      () =>
-        depots.filter((d) => d.depot_x !== undefined && d.depot_y !== undefined),
-      [depots],
-    );
-  
-    const inputValidator = useMemo(() => new InputValidator(), []);
-  
-    // Input states for modal
-    const [customerInput, setCustomerInput] = useState({
-      customer_x: 0,
-      customer_y: 0,
-      demand: 0,
-      customer_name: "",
-    });
-    const [depotInput, setDepotInput] = useState({
-      depot_name: "",
-      depot_x: 0,
-      depot_y: 0,
-      capacity: 0,
-      maxDistance: 0,
-      type: "",
-    });
-    const [vehicleInput, setVehicleInput] = useState({
-      capacity: 0,
-      depot_id: 0,
-    });
-  
-    // FIXED: Modal validation function - only for single coordinate pairs
-    const handleModalValidation = (lat: number, lng: number): boolean => {
-      setModalValidationError("");
-      const errorArray: string[] = [];
-      const setErrorArray = (errors: string[]) => {
-        errorArray.length = 0;
-        errorArray.push(...errors);
-      };
-      try {
-        const result = validateData(lat, lng, customers, depots, errorArray, setErrorArray);
-        if (!result && errorArray.length > 0) {
-          setModalValidationError(errorArray[0]);
-          return false;
-        } else if (!result) {
-          setModalValidationError("Invalid coordinates");
-          return false;
-        }
-        return true;
-      } catch (error) {
-        console.error("Error in modal validation:", error);
-        setModalValidationError("Validation function error");
+  const [depotInput, setDepotInput] = useState({
+    depot_name: "",
+    depot_x: 0,
+    depot_y: 0,
+    capacity: 0,
+    maxDistance: 0,
+    type: "",
+  });
+  const [vehicleInput, setVehicleInput] = useState({
+    capacity: 0,
+    depot_id: 0,
+  });
+
+  // FIXED: Modal validation function - only for single coordinate pairs
+  const handleModalValidation = (lat: number, lng: number): boolean => {
+    setModalValidationError("");
+    const errorArray: string[] = [];
+    const setErrorArray = (errors: string[]) => {
+      errorArray.length = 0;
+      errorArray.push(...errors);
+    };
+    try {
+      const result = validateData(
+        lat,
+        lng,
+        customers,
+        depots,
+        errorArray,
+        setErrorArray,
+      );
+      if (!result && errorArray.length > 0) {
+        setModalValidationError(errorArray[0]);
+        return false;
+      } else if (!result) {
+        setModalValidationError("Invalid coordinates");
         return false;
       }
-    };
-  
-// FIXED: Global validation function
-const validateAllCoordinates = () => {
-  const validator = new Validator(customers, depots, vehicles);
-  console.log(validator);
-  const errors = validator.validateAll(); 
+      return true;
+    } catch (error) {
+      console.error("Error in modal validation:", error);
+      setModalValidationError("Validation function error");
+      return false;
+    }
+  };
 
-  console.log(errors);         
-  setValidationErrors(errors);  
+  // FIXED: Global validation function
+  const validateAllCoordinates = () => {
+    const validator = new Validator(customers, depots, vehicles);
+    console.log(validator);
+    const errors = validator.validateAll();
 
-  return errors.length === 0;
-};
+    console.log(errors);
+    setValidationErrors(errors);
 
+    return errors.length === 0;
+  };
 
-  
-    // Load scenario data and validate on mount
-    useEffect(() => {
-      fetch("http://127.0.0.1:5100/scenarios_by_id", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scenario_id: scenarioId }),
+  // Load scenario data and validate on mount
+  useEffect(() => {
+    fetch("http://127.0.0.1:5100/scenarios_by_id", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario_id: scenarioId }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setCustomers(data.customers);
+        setDepots(data.depots);
+        setVehicles(data.vehicles);
+        setTitle(data.name);
+        setCenter(getFirstLatLng(data.customers));
       })
-        .then((res) => res.json())
-        .then((data) => {
-          setCustomers(data.customers);
-          setDepots(data.depots);
-          setVehicles(data.vehicles);
-          setTitle(data.name);
-          setCenter(getFirstLatLng(data.customers));
-        })
-        .catch((err) => {
-          console.error("Fetch error:", err);
-        });
-    }, [scenarioId]);
-  
-    useEffect(() => {
-      if (customers.length > 0 || depots.length > 0) {
-        const timer = setTimeout(() => {
-          validateAllCoordinates();
-        }, 100);
-        return () => clearTimeout(timer);
-      }
-    }, [customers, depots]);
-  
-    useEffect(() => {
-      if (validCustomers.length < 2) return;
-  
-      const fetchRoute = async () => {
-        const coordsString = validCustomers
-          .map((c) => getLngLat(c).join(","))
-          .join(";");
-  
-        const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-        try {
-          const response = await fetch(url);
-          const data = await response.json();
-  
-          if (!data.routes || data.routes.length === 0) {
-            console.error("No route found");
-            setRouteCoords([]);
-            return;
-          }
-  
-          const coords = data.routes[0].geometry.coordinates.map(
-            ([lng, lat]: [number, number]) => [lat, lng],
-          );
-  
-          setRouteCoords(coords);
-        } catch (error) {
-          console.error("Failed to fetch route:", error);
-        }
-      };
-  
-      fetchRoute();
-    }, [validCustomers]);
-  
-  
-  
-    const addCustomer = () => {
-      if (!handleModalValidation(customerInput.customer_x, customerInput.customer_y)) return;
-  
-      const current_id = get_date_time();
-      fetch("http://127.0.0.1:5100/customers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...customerInput,
-          scenario_id: scenarioId,
-          customer_id: current_id,
-        }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setCustomers([...customers, { ...data, id: current_id }]);
-          setCustomerInput({ customer_x: 0, customer_y: 0, demand: 0, customer_name: "" });
-          setShowModal(null);
-          setModalValidationError("");
-        })
-        .catch((err) => console.error("Failed to add customer:", err));
-    };
-  
-    const removeCustomer = (id: number) => {
-      fetch(`http://127.0.0.1:5100/customers`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer_id: id }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "success") setCustomers(customers.filter((c) => c.id !== id));
-          else console.error("Failed to delete customer:", data.error);
-        })
-        .catch((err) => console.error("Fetch error:", err));
-    };
-  
-    const addDepot = () => {
-      if (!handleModalValidation(depotInput.depot_x, depotInput.depot_y)) return;
-  
-      const current_id = get_date_time();
-      fetch(`http://127.0.0.1:5100/depots`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...depotInput, scenario_id: scenarioId, depot_id: current_id }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setDepots([...depots, { ...data, id: current_id }]);
-          setDepotInput({ depot_name: "", depot_x: 0, depot_y: 0, capacity: 0, maxDistance: 0, type: "" });
-          setShowModal(null);
-          setModalValidationError("");
-        })
-        .catch((err) => console.error("Failed to add depot:", err));
-    };
-  
-    const removeDepot = (id: number) => {
-      fetch(`http://127.0.0.1:5100/depots`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ depot_id: id }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "success") setDepots(depots.filter((d) => d.id !== id));
-          else console.error("Failed to delete depot:", data.error);
-        })
-        .catch((err) => console.error("Fetch error:", err));
-    };
-  
-    const addVehicle = () => {
-      const current_id = get_date_time();
-      fetch(`http://127.0.0.1:5100/vehicles`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...vehicleInput, scenario_id: scenarioId, vehicle_id: current_id }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setVehicles([...vehicles, { ...data[0], id: current_id }]);
-          setVehicleInput({ capacity: 0, depot_id: 0 });
-          setShowModal(null);
-        })
-        .catch((err) => console.error("Failed to add vehicle:", err));
-    };
-  
-    const removeVehicle = (id: number) => {
-      fetch(`http://127.0.0.1:5100/vehicles`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vehicle_id: id }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.status === "success") setVehicles(vehicles.filter((v) => v.id !== id));
-          else console.error("Failed to delete vehicle:", data.error);
-        })
-        .catch((err) => console.error("Fetch error:", err));
-    };
-  
-    const getTransportationProblem = async (depots: Depot[], customers: Customer[]) => {
-      const costMatrix: number[][] = await getCostMatrix(depots, customers);
-      fetch(`http://127.0.0.1:5100/solvetp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ demand: customers, supply: depots, costMatrix }),
-      })
-        .then((res) => res.json())
-        .then((data) => setTransportationProblem(data))
-        .catch((err) => console.error("Fetch error:", err));
-    };
-  
-    const getMDVRPProblem = async (depots: Depot[], customers: Customer[], vehicles: Vehicle[]) => {
-      if (validationErrors.length > 0) {
-        setLoading(false);
-        alert("Please fix coordinate validation errors before calculating routes.");
-        return;
-      }
+      .catch((err) => {
+        console.error("Fetch error:", err);
+      });
+  }, [scenarioId]);
+
+  useEffect(() => {
+    if (customers.length > 0 || depots.length > 0) {
+      const timer = setTimeout(() => {
+        validateAllCoordinates();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [customers, depots]);
+
+  useEffect(() => {
+    if (validCustomers.length < 2) return;
+
+    const fetchRoute = async () => {
+      const coordsString = validCustomers
+        .map((c) => getLngLat(c).join(","))
+        .join(";");
+
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
       try {
-        const costMatrix: number[][] = await getCostMatrix(depots, customers);
-        const response = await fetch(`http://127.0.0.1:5100/mdvrp`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ depots, customers, vehicles, costMatrix }),
-        });
+        const response = await fetch(url);
         const data = await response.json();
-        setMDVRPProblem(data);
-        setRouteCoords(makeRouteList(data.routes));
-        setLoading(false);
-  
-        if (!inputValidator.isValid()) {
-          setValidationErrors(prev => [...prev, ...inputValidator.getErrors()]);
+
+        if (!data.routes || data.routes.length === 0) {
+          console.error("No route found");
+          setRouteCoords([]);
           return;
         }
-        inputValidator.resetErrors();
-      } catch (err) {
-        console.error("Fetch error:", err);
-        setLoading(false);
+
+        const coords = data.routes[0].geometry.coordinates.map(
+          ([lng, lat]: [number, number]) => [lat, lng],
+        );
+
+        setRouteCoords(coords);
+      } catch (error) {
+        console.error("Failed to fetch route:", error);
       }
     };
-  
-    const getCoordinatesFromName = (name: string): [number, number] | undefined => {
-      const depot = depots.find((d) => d.depot_name?.toLowerCase().includes(name.toLowerCase()));
-      if (depot) return [depot.depot_x, depot.depot_y];
-      const customer = customers.find((c) => c.customer_name?.toLowerCase().includes(name.toLowerCase()));
-      if (customer) return [customer.customer_x, customer.customer_y];
-      console.warn("No coordinates found for", name);
-      return undefined;
-    };
-  
-    const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] => {
-      return routeArray.map((route_info) => {
-        const coords: [number, number][] = [];
-        route_info.route.forEach((name) => {
-          const point = getCoordinatesFromName(name);
-          if (point) coords.push(point);
+
+    fetchRoute();
+  }, [validCustomers]);
+
+  const addCustomer = () => {
+    if (
+      !handleModalValidation(customerInput.customer_x, customerInput.customer_y)
+    )
+      return;
+
+    const current_id = get_date_time();
+    fetch("http://127.0.0.1:5100/customers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...customerInput,
+        scenario_id: scenarioId,
+        customer_id: current_id,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setCustomers([...customers, { ...data, id: current_id }]);
+        setCustomerInput({
+          customer_x: 0,
+          customer_y: 0,
+          demand: 0,
+          customer_name: "",
         });
-        if (coords.length > 0) coords.push(coords[0]);
-        return { id: route_info.id, route: coords };
-      });
-    };
-  
-    const renderRoutes = () => {
-      if (!routeCoords || routeCoords.length === 0) return null;
-      const validRouteCoords = routeCoords.filter((r) => r.route?.length && r.route.length >= 2 &&
-        r.route.every(([lat, lng]) => typeof lat === 'number' && typeof lng === 'number' && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && !isNaN(lat) && !isNaN(lng))
+        setShowModal(null);
+        setModalValidationError("");
+      })
+      .catch((err) => console.error("Failed to add customer:", err));
+  };
+
+  const removeCustomer = (id: number) => {
+    fetch(`http://127.0.0.1:5100/customers`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success")
+          setCustomers(customers.filter((c) => c.id !== id));
+        else console.error("Failed to delete customer:", data.error);
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
+
+  const addDepot = () => {
+    if (!handleModalValidation(depotInput.depot_x, depotInput.depot_y)) return;
+
+    const current_id = get_date_time();
+    fetch(`http://127.0.0.1:5100/depots`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...depotInput,
+        scenario_id: scenarioId,
+        depot_id: current_id,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setDepots([...depots, { ...data, id: current_id }]);
+        setDepotInput({
+          depot_name: "",
+          depot_x: 0,
+          depot_y: 0,
+          capacity: 0,
+          maxDistance: 0,
+          type: "",
+        });
+        setShowModal(null);
+        setModalValidationError("");
+      })
+      .catch((err) => console.error("Failed to add depot:", err));
+  };
+
+  const removeDepot = (id: number) => {
+    fetch(`http://127.0.0.1:5100/depots`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ depot_id: id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success")
+          setDepots(depots.filter((d) => d.id !== id));
+        else console.error("Failed to delete depot:", data.error);
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
+
+  const addVehicle = () => {
+    const current_id = get_date_time();
+    fetch(`http://127.0.0.1:5100/vehicles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...vehicleInput,
+        scenario_id: scenarioId,
+        vehicle_id: current_id,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setVehicles([...vehicles, { ...data[0], id: current_id }]);
+        setVehicleInput({ capacity: 0, depot_id: 0 });
+        setShowModal(null);
+      })
+      .catch((err) => console.error("Failed to add vehicle:", err));
+  };
+
+  const removeVehicle = (id: number) => {
+    fetch(`http://127.0.0.1:5100/vehicles`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vehicle_id: id }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success")
+          setVehicles(vehicles.filter((v) => v.id !== id));
+        else console.error("Failed to delete vehicle:", data.error);
+      })
+      .catch((err) => console.error("Fetch error:", err));
+  };
+
+  const getTransportationProblem = async (
+    depots: Depot[],
+    customers: Customer[],
+  ) => {
+    const costMatrix: number[][] = await getCostMatrix(depots, customers);
+    fetch(`http://127.0.0.1:5100/solvetp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ demand: customers, supply: depots, costMatrix }),
+    })
+      .then((res) => res.json())
+      .then((data) => setTransportationProblem(data))
+      .catch((err) => console.error("Fetch error:", err));
+  };
+
+  const getMDVRPProblem = async (
+    depots: Depot[],
+    customers: Customer[],
+    vehicles: Vehicle[],
+  ) => {
+    if (validationErrors.length > 0) {
+      setLoading(false);
+      alert(
+        "Please fix coordinate validation errors before calculating routes.",
       );
-      return validRouteCoords.map((coord, index) => (
-        <RoutingMachine key={coord.id} route={coord.route} color={index === 0 ? "red" : "blue"} />
-      ));
-    };
-  
-  
+      return;
+    }
+    try {
+      const costMatrix: number[][] = await getCostMatrix(depots, customers);
+      const response = await fetch(`http://127.0.0.1:5100/mdvrp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ depots, customers, vehicles, costMatrix }),
+      });
+      const data = await response.json();
+      setMDVRPProblem(data);
+      setRouteCoords(makeRouteList(data.routes));
+      setLoading(false);
+
+      if (!inputValidator.isValid()) {
+        setValidationErrors((prev) => [...prev, ...inputValidator.getErrors()]);
+        return;
+      }
+      inputValidator.resetErrors();
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setLoading(false);
+    }
+  };
+
+  const getCoordinatesFromName = (
+    name: string,
+  ): [number, number] | undefined => {
+    const depot = depots.find((d) =>
+      d.depot_name?.toLowerCase().includes(name.toLowerCase()),
+    );
+    if (depot) return [depot.depot_x, depot.depot_y];
+    const customer = customers.find((c) =>
+      c.customer_name?.toLowerCase().includes(name.toLowerCase()),
+    );
+    if (customer) return [customer.customer_x, customer.customer_y];
+    console.warn("No coordinates found for", name);
+    return undefined;
+  };
+
+  const makeRouteList = (
+    routeArray: { id: string; route: string[] }[],
+  ): Route[] => {
+    return routeArray.map((route_info) => {
+      const coords: [number, number][] = [];
+      route_info.route.forEach((name) => {
+        const point = getCoordinatesFromName(name);
+        if (point) coords.push(point);
+      });
+      if (coords.length > 0) coords.push(coords[0]);
+      return { id: route_info.id, route: coords };
+    });
+  };
+
+  const renderRoutes = () => {
+    if (!routeCoords || routeCoords.length === 0) return null;
+    const validRouteCoords = routeCoords.filter(
+      (r) =>
+        r.route?.length &&
+        r.route.length >= 2 &&
+        r.route.every(
+          ([lat, lng]) =>
+            typeof lat === "number" &&
+            typeof lng === "number" &&
+            lat >= -90 &&
+            lat <= 90 &&
+            lng >= -180 &&
+            lng <= 180 &&
+            !isNaN(lat) &&
+            !isNaN(lng),
+        ),
+    );
+    return validRouteCoords.map((coord, index) => (
+      <RoutingMachine
+        key={coord.id}
+        route={coord.route}
+        color={index === 0 ? "red" : "blue"}
+      />
+    ));
+  };
+
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
       {/* Validation Alerts */}
@@ -454,22 +514,31 @@ const validateAllCoordinates = () => {
           <hr className="w-100 mb-4" />
           <ul className="list">
             {customers?.map((c) => {
-              const hasError = validationErrors.some(error => 
-                error.includes(`Customer "${c.customer_name}"`)
+              const hasError = validationErrors.some((error) =>
+                error.includes(`Customer "${c.customer_name}"`),
               );
               return (
-                <li key={c.id} className={`list-item ${hasError ? 'border-danger' : ''}`}>
+                <li
+                  key={c.id}
+                  className={`list-item ${hasError ? "border-danger" : ""}`}
+                >
                   <div>
-                    <strong className={hasError ? 'text-danger' : ''}>
+                    <strong className={hasError ? "text-danger" : ""}>
                       {c.customer_name}
-                      {hasError && <FaExclamationTriangle className="ms-1 text-danger" size={12} />}
+                      {hasError && (
+                        <FaExclamationTriangle
+                          className="ms-1 text-danger"
+                          size={12}
+                        />
+                      )}
                     </strong>
                     <div style={{ marginTop: "4px" }}>
                       <span style={{ fontWeight: 500 }}>Coordinates:</span> (
                       {c.customer_x.toFixed(4)}, {c.customer_y.toFixed(4)})
                     </div>
                     <div style={{ marginTop: "2px" }}>
-                      <span style={{ fontWeight: 500 }}>Demand:</span> {c.demand}
+                      <span style={{ fontWeight: 500 }}>Demand:</span>{" "}
+                      {c.demand}
                     </div>
                   </div>
                   <div className="delete-btn-wrapper">
@@ -498,15 +567,23 @@ const validateAllCoordinates = () => {
           <hr className="w-100 mb-4" />
           <ul className="list">
             {depots?.map((d) => {
-              const hasError = validationErrors.some(error => 
-                error.includes(`Depot "${d.depot_name}"`)
+              const hasError = validationErrors.some((error) =>
+                error.includes(`Depot "${d.depot_name}"`),
               );
               return (
-                <li key={d.id} className={`list-item ${hasError ? 'border-danger' : ''}`}>
+                <li
+                  key={d.id}
+                  className={`list-item ${hasError ? "border-danger" : ""}`}
+                >
                   <div>
-                    <strong className={hasError ? 'text-danger' : ''}>
+                    <strong className={hasError ? "text-danger" : ""}>
                       {d.depot_name}
-                      {hasError && <FaExclamationTriangle className="ms-1 text-danger" size={12} />}
+                      {hasError && (
+                        <FaExclamationTriangle
+                          className="ms-1 text-danger"
+                          size={12}
+                        />
+                      )}
                     </strong>
                     <div style={{ marginTop: "4px" }}>
                       <span style={{ fontWeight: 500 }}>Coordinates:</span> (
@@ -597,7 +674,7 @@ const validateAllCoordinates = () => {
           {/* Calculate Button */}
           <Button
             variant={validationErrors.length > 0 ? "danger" : "primary"}
-            className="fw-bold fs-5 rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-2"
+            className="fw-bold fs-5 rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-2 "
             style={{ maxWidth: "200px" }}
             disabled={validationErrors.length > 0 || loading}
             onClick={() => {
@@ -605,7 +682,11 @@ const validateAllCoordinates = () => {
               validateAllCoordinates();
               getMDVRPProblem(depots, customers, vehicles);
             }}
-            title={validationErrors.length > 0 ? "Fix coordinate errors first" : "Calculate routes"}
+            title={
+              validationErrors.length > 0
+                ? "Fix coordinate errors first"
+                : "Calculate routes"
+            }
           >
             <span className="me-3">
               {validationErrors.length > 0 ? "Fix Errors" : "Calculate"}
@@ -617,7 +698,7 @@ const validateAllCoordinates = () => {
               {loading ? (
                 <SpinnerComponent />
               ) : validationErrors.length > 0 ? (
-                <FaExclamationTriangle size={14} color="#dc3545"/>
+                <FaExclamationTriangle size={14} color="#dc3545" />
               ) : (
                 <FaArrowRight size={14} />
               )}
@@ -766,7 +847,7 @@ const validateAllCoordinates = () => {
         ))}
         <RecenterMap center={center} />
       </MapContainer>
-      
+
       {/* Modal */}
       <Modal
         show={showModal !== null}
@@ -783,7 +864,7 @@ const validateAllCoordinates = () => {
             {showModal === "vehicle" && "Add Vehicle"}
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-4">
           {modalValidationError && (
             <Alert variant="danger" className="mb-3">
               <FaExclamationTriangle className="me-2" />
@@ -804,6 +885,7 @@ const validateAllCoordinates = () => {
                       customer_name: e.target.value,
                     })
                   }
+                  className="mb-3"
                 />
                 <Form.Label>X (Latitude)</Form.Label>
                 <Form.Control
@@ -817,7 +899,7 @@ const validateAllCoordinates = () => {
                       customer_x: value,
                     });
                   }}
-                  className={modalValidationError ? "is-invalid" : ""}
+                  className={`mb-3 ${modalValidationError ? "is-invalid" : ""}`}
                 />
               </Form.Group>
               <Form.Group className="mb-2">
@@ -847,6 +929,7 @@ const validateAllCoordinates = () => {
                       demand: Number(e.target.value),
                     })
                   }
+                  className="mb-3"
                 />
               </Form.Group>
               <div className="mt-3 p-2 bg-light rounded">
@@ -858,8 +941,7 @@ const validateAllCoordinates = () => {
                   • Longitude must be between -180 and 180
                   <br />
                   • Avoid ocean coordinates (0,0) or remote areas
-                  <br />
-                  • Ensure coordinates are on accessible land
+                  <br />• Ensure coordinates are on accessible land
                 </small>
               </div>
             </>
@@ -954,8 +1036,7 @@ const validateAllCoordinates = () => {
                   • Longitude must be between -180 and 180
                   <br />
                   • Avoid ocean coordinates (0,0) or remote areas
-                  <br />
-                  • Ensure coordinates are on accessible land
+                  <br />• Ensure coordinates are on accessible land
                 </small>
               </div>
             </>
@@ -1001,16 +1082,6 @@ const validateAllCoordinates = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button
-            variant="secondary"
-            onClick={() => {
-              setShowModal(null);
-              setModalValidationError("");
-            }}
-            className="rounded-pill px-4"
-          >
-            Cancel
-          </Button>
-          <Button
             variant="primary"
             onClick={() => {
               if (showModal === "customer") addCustomer();
@@ -1018,13 +1089,13 @@ const validateAllCoordinates = () => {
               if (showModal === "vehicle") addVehicle();
             }}
             disabled={modalValidationError !== ""}
-            className="rounded-pill px-4"
+            className="rounded-pill px-5 py-4 button-circle bg-custom-color-grey-lighter"
           >
             Add
           </Button>
         </Modal.Footer>
       </Modal>
-      
+
       <InfoModal show={infoModal} onHide={() => setInfoModal(false)} />
     </div>
   );

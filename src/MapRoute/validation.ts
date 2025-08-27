@@ -10,9 +10,8 @@ export const validateData = (
   customers: Customer[],
   depots: Depot[],
   vehicles: Vehicle[],
-  validationErrors: string[]
+  validationErrors: string[],
 ): boolean => {
-
   // 1️⃣ Create a validator instance
   const validator = new Validator(customers, depots, vehicles);
 
