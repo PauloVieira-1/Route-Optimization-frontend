@@ -1,591 +1,401 @@
-// MapRoute.tsx
-import { useEffect, useState, useMemo } from "react";
-import {
-  MapContainer,
-  TileLayer,
-  Marker,
-  useMap,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import {
-  FaArrowRight,
-  FaArrowLeft,
-  FaPlus,
-  FaTimes,
-  FaHouseUser,
-  FaExclamationTriangle,
-} from "react-icons/fa";
-import { BsFillQuestionCircleFill } from "react-icons/bs";
-import { Modal, Button, Form, Alert } from "react-bootstrap";
-import "./MapRoute.css";
-import { Link } from "react-router-dom";
-import type { Customer, Depot, Vehicle, Route } from "../types";
-import { useParams } from "react-router-dom";
-import {
-  get_date_time,
-  getLatLng,
-  getLngLat,
-  getFirstLatLng,
-  redIcon,
-  blueIcon,
-  getLatLngDepot,
-  getCostMatrix,
-} from "./utiities";
-import ZoomTopRight from "./ZoomtoRight";
-import RoutingMachine from "./RoutingMachine";
-import SpinnerComponent from "../Spinner/Spinner";
-import InfoModal from "../InfoModal/InfoModal";
-import InputValidator from "../validator";
-import { CoordinateValidator } from "./coordinnateValidator";
-
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-
-function RecenterMap({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, map.getZoom());
-  }, [center, map]);
-  return null;
-}
-
-const MapRoute = () => {
-  const [routeCoords, setRouteCoords] = useState<Route[]>([]);
-  const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
-  const [isOverlayOpen, setIsOverlayOpen] = useState(false);
-  const [title, setTitle] = useState("Scenario");
-  const [center, setCenter] = useState<[number, number]>([0, 0]);
-  const [transportationProbelm, setTransportationProblem] =
-    useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [infoModal, setInfoModal] = useState<InfoModal | null>(null);
-
-  // Validation states
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [coordinateWarnings, setCoordinateWarnings] = useState<string[]>([]);
-
-  // Customers, Depots, Vehicles states
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [depots, setDepots] = useState<Depot[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [mdvrpProblem, setMDVRPProblem] = useState<string>("");
-
-  const { id } = useParams<{ id: string }>();
-  const scenarioId = parseInt(id || "", 10);
-
-  const validCustomers = useMemo(
-    () =>
-      customers.filter(
-        (c) => c.customer_x !== undefined && c.customer_y !== undefined,
-      ),
-    [customers],
-  );
-
-  const validDepots = useMemo(
-    () =>
-      depots.filter((d) => d.depot_x !== undefined && d.depot_y !== undefined),
-    [depots],
-  );
-
-  const inputValidator = useMemo(() => new InputValidator(), []);
-
-
-  useEffect(() => {
-    fetch("http://127.0.0.1:5100/scenarios_by_id", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenario_id: scenarioId }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setCustomers(data.customers);
-        setDepots(data.depots);
-        setVehicles(data.vehicles);
-        setTitle(data.name);
-        setCenter(getFirstLatLng(data.customers));
-      })
-      .catch((err) => {
-        console.error("Fetch error:", err);
-      });
-  }, [scenarioId]);
-
-  // Input states for modal
-  const [customerInput, setCustomerInput] = useState({
-    customer_x: 0,
-    customer_y: 0,
-    demand: 0,
-    customer_name: "",
+  import { useEffect, useState, useMemo } from "react";
+  import {
+    MapContainer,
+    TileLayer,
+    Marker,
+    useMap,
+  } from "react-leaflet";
+  import "leaflet/dist/leaflet.css";
+  import {
+    FaArrowRight,
+    FaArrowLeft,
+    FaPlus,
+    FaTimes,
+    FaHouseUser,
+    FaExclamationTriangle,
+  } from "react-icons/fa";
+  import { BsFillQuestionCircleFill } from "react-icons/bs";
+  import { Modal, Button, Form, Alert } from "react-bootstrap";
+  import "./MapRoute.css";
+  import { Link, useParams } from "react-router-dom";
+  import type { Customer, Depot, Vehicle, Route } from "../types";
+  import {
+    get_date_time,
+    getLatLng,
+    getLngLat,
+    getFirstLatLng,
+    redIcon,
+    blueIcon,
+    getLatLngDepot,
+    getCostMatrix,
+  } from "./utiities";
+  import ZoomTopRight from "./ZoomtoRight";
+  import RoutingMachine from "./RoutingMachine";
+  import SpinnerComponent from "../Spinner/Spinner";
+  import InfoModal from "../InfoModal/InfoModal";
+  import InputValidator from "../validator";
+  import { validateData } from "./validation";
+  import Validator from "../validator";
+  
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+    iconUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+    shadowUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
   });
-  const [depotInput, setDepotInput] = useState({
-    depot_name: "",
-    depot_x: 0,
-    depot_y: 0,
-    capacity: 0,
-    maxDistance: 0,
-    type: "",
-  });
-  const [vehicleInput, setVehicleInput] = useState({
-    capacity: 0,
-    depot_id: 0,
-  });
-
-  useEffect(() => {
-  if (customers && depots && vehicles) {
-    inputValidator.setData(customers, depots, vehicles);
+  
+  function RecenterMap({ center }: { center: [number, number] }) {
+    const map = useMap();
+    useEffect(() => {
+      map.setView(center, map.getZoom());
+    }, [center, map]);
+    return null;
   }
-}, [customers, depots, vehicles, inputValidator]);
-
-
-  // Modal states
-  const [showModal, setShowModal] = useState<
-    "customer" | "depot" | "vehicle" | null
-  >(null);
-
-  // Validation state for modal inputs
-  const [modalValidationError, setModalValidationError] = useState<string>("");
-
-  // Validate modal input coordinates
-  const validateModalInput = (lat: number, lng: number): boolean => {
-    setModalValidationError("");
-    
-    const validation = CoordinateValidator.validateCoordinate(lat, lng);
-    if (!validation.valid) {
-      setModalValidationError(validation.error || "Invalid coordinates");
-      return false;
-    }
-
-    // Check for duplicates with existing coordinates
-    const allExisting = [
-      ...customers.map(c => ({ lat: c.customer_x, lng: c.customer_y, name: c.customer_name, type: 'Customer' })),
-      ...depots.map(d => ({ lat: d.depot_x, lng: d.depot_y, name: d.depot_name, type: 'Depot' }))
-    ];
-
-    for (const existing of allExisting) {
-      if (CoordinateValidator.areCoordinatesTooClose(lat, lng, existing.lat, existing.lng, 100)) {
-        setModalValidationError(
-          `Coordinates are too close to existing ${existing.type} "${existing.name}"`
-        );
+  
+  const MapRoute = () => {
+    const [routeCoords, setRouteCoords] = useState<Route[]>([]);
+    const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
+    const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+    const [title, setTitle] = useState("Scenario");
+    const [center, setCenter] = useState<[number, number]>([0, 0]);
+    const [transportationProbelm, setTransportationProblem] = useState<string>("");
+    const [loading, setLoading] = useState<boolean>(false);
+    const [infoModal, setInfoModal] = useState<boolean>(false);
+  
+    // Validation states
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [modalValidationError, setModalValidationError] = useState<string>("");
+  
+    // Customers, Depots, Vehicles states
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [depots, setDepots] = useState<Depot[]>([]);
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [mdvrpProblem, setMDVRPProblem] = useState<string>("");
+  
+    // Modal states
+    const [showModal, setShowModal] = useState<"customer" | "depot" | "vehicle" | null>(null);
+  
+    const { id } = useParams<{ id: string }>();
+    const scenarioId = parseInt(id || "", 10);
+  
+    const validCustomers = useMemo(
+      () =>
+        customers.filter(
+          (c) => c.customer_x !== undefined && c.customer_y !== undefined,
+        ),
+      [customers],
+    );
+  
+    const validDepots = useMemo(
+      () =>
+        depots.filter((d) => d.depot_x !== undefined && d.depot_y !== undefined),
+      [depots],
+    );
+  
+    const inputValidator = useMemo(() => new InputValidator(), []);
+  
+    // Input states for modal
+    const [customerInput, setCustomerInput] = useState({
+      customer_x: 0,
+      customer_y: 0,
+      demand: 0,
+      customer_name: "",
+    });
+    const [depotInput, setDepotInput] = useState({
+      depot_name: "",
+      depot_x: 0,
+      depot_y: 0,
+      capacity: 0,
+      maxDistance: 0,
+      type: "",
+    });
+    const [vehicleInput, setVehicleInput] = useState({
+      capacity: 0,
+      depot_id: 0,
+    });
+  
+    // FIXED: Modal validation function - only for single coordinate pairs
+    const handleModalValidation = (lat: number, lng: number): boolean => {
+      setModalValidationError("");
+      const errorArray: string[] = [];
+      const setErrorArray = (errors: string[]) => {
+        errorArray.length = 0;
+        errorArray.push(...errors);
+      };
+      try {
+        const result = validateData(lat, lng, customers, depots, errorArray, setErrorArray);
+        if (!result && errorArray.length > 0) {
+          setModalValidationError(errorArray[0]);
+          return false;
+        } else if (!result) {
+          setModalValidationError("Invalid coordinates");
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error("Error in modal validation:", error);
+        setModalValidationError("Validation function error");
         return false;
       }
-    }
-
-    return true;
-  };
-
-  // Fetch route for map (keeping original logic but adding validation)
-  useEffect(() => {
-    if (validCustomers.length < 2) return;
-
-    const fetchRoute = async () => {
-      const coordsString = validCustomers
-        .map((c) => getLngLat(c).join(",")) // lng,lat
-        .join(";");
-
-      const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
-      try {
-        const response = await fetch(url);
-        const data = await response.json();
-        console.log("OSRM response:", data);
-
-        if (!data.routes || data.routes.length === 0) {
-          console.error("No route found");
-          setRouteCoords([]);
-          return;
-        }
-
-        const coords = data.routes[0].geometry.coordinates.map(
-          ([lng, lat]: [number, number]) => [lat, lng],
-        );
-
-        setRouteCoords(coords);
-      } catch (error) {
-        console.error("Failed to fetch route:", error);
-      }
     };
+  
+// FIXED: Global validation function
+const validateAllCoordinates = () => {
+  const validator = new Validator(customers, depots, vehicles);
+  console.log(validator);
+  const errors = validator.validateAll(); 
 
-    fetchRoute();
-  }, [customers]);
+  console.log(errors);         
+  setValidationErrors(errors);  
 
-  useEffect(() => {
-  validateAll();
-}, [customers, depots, vehicles, routeCoords]);
-
-  ///////////////
-  // CUSTOMERS //
-  ///////////////
-
-  const addCustomer = () => {
-    // Validate coordinates before adding
-    if (!validateModalInput(customerInput.customer_x, customerInput.customer_y)) {
-      return;
-    }
-
-    const current_id = get_date_time();
-    fetch("http://127.0.0.1:5100/customers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...customerInput,
-        scenario_id: scenarioId,
-        customer_id: current_id,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setCustomers([...customers, { ...data, id: current_id }]);
-        setCustomerInput({
-          customer_x: 0,
-          customer_y: 0,
-          demand: 0,
-          customer_name: "",
-        });
-        setShowModal(null);
-        setModalValidationError("");
-      })
-      .catch((err) => console.error("Failed to add customer:", err));
-  };
-
-  const removeCustomer = (id: number) => {
-    fetch(`http://127.0.0.1:5100/customers`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ customer_id: id }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success") {
-          setCustomers(customers.filter((c) => c.id !== id));
-        } else {
-          console.error("Failed to delete customer:", data.error);
-        }
-      })
-      .catch((err) => console.error("Fetch error:", err));
-  };
-
-  ///////////////
-  // DEPOTS //
-  ///////////////
-
-  const addDepot = () => {
-    // Validate coordinates before adding
-    if (!validateModalInput(depotInput.depot_x, depotInput.depot_y)) {
-      return;
-    }
-
-    const current_id = get_date_time();
-
-    fetch(`http://127.0.0.1:5100/depots`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...depotInput,
-        scenario_id: scenarioId,
-        depot_id: current_id,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setDepots([...depots, { ...data, id: current_id }]);
-        setDepotInput({
-          depot_name: "",
-          depot_x: 0,
-          depot_y: 0,
-          capacity: 0,
-          maxDistance: 0,
-          type: "",
-        });
-        setShowModal(null);
-        setModalValidationError("");
-      })
-      .catch((err) => console.error("Failed to add depot:", err));
-  };
-
-  const removeDepot = (id: number) => {
-    fetch(`http://127.0.0.1:5100/depots`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ depot_id: id }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success") {
-          setDepots(depots.filter((d) => d.id !== id));
-        } else {
-          console.error("Failed to delete depot:", data.error);
-        }
-      })
-      .catch((err) => console.error("Fetch error:", err));
-  };
-
-  ///////////////
-  // VEHICLES //
-  ///////////////
-
-  const addVehicle = () => {
-    const current_id = get_date_time();
-
-    fetch(`http://127.0.0.1:5100/vehicles`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...vehicleInput,
-        scenario_id: scenarioId,
-        vehicle_id: current_id,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setVehicles([...vehicles, { ...data[0], id: current_id }]);
-        setVehicleInput({
-          capacity: 0,
-          depot_id: 0,
-        });
-        setShowModal(null);
-      })
-      .catch((err) => console.error("Failed to add vehicle:", err));
-  };
-
-  const removeVehicle = (id: number) => {
-    fetch(`http://127.0.0.1:5100/vehicles`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vehicle_id: id }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "success") {
-          setVehicles(vehicles.filter((v) => v.id !== id));
-        } else {
-          console.error("Failed to delete vehicle:", data.error);
-        }
-      })
-      .catch((err) => console.error("Fetch error:", err));
-  };
-
-  // ///////////////
-  // OVERLAY MENU //
-  /////////////////
-
-  const validateAll = () => {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  // Customer validation
-  customers.forEach((customer) => {
-    if (customer.customer_x !== undefined && customer.customer_y !== undefined) {
-      const validation = CoordinateValidator.validateCoordinate(
-        customer.customer_x,
-        customer.customer_y
-      );
-      if (!validation.valid) {
-        errors.push(`Customer "${customer.customer_name}": ${validation.error}`);
-      }
-    }
-  });
-
-  // Depot validation
-  depots.forEach((depot) => {
-    if (depot.depot_x !== undefined && depot.depot_y !== undefined) {
-      const validation = CoordinateValidator.validateCoordinate(
-        depot.depot_x,
-        depot.depot_y
-      );
-      if (!validation.valid) {
-        errors.push(`Depot "${depot.depot_name}": ${validation.error}`);
-      }
-    }
-  });
-
-  // Route validation
-  routeCoords.forEach((r) => {
-    if (!r.route?.length || r.route.length < 2) {
-      errors.push(`Route ${r.id} has too few points`);
-    } else {
-      r.route.forEach(([lat, lng], i) => {
-        const validation = CoordinateValidator.validateCoordinate(lat, lng);
-        if (!validation.valid) {
-          errors.push(`Route ${r.id}, point ${i + 1}: ${validation.error}`);
-        }
-      });
-    }
-  });
-
-  // InputValidator
-  inputValidator.setData(customers, depots, vehicles);
-  if (!inputValidator.isValid()) {
-    errors.push(...inputValidator.getErrors());
-  }
-
-  setValidationErrors(errors);
-  setCoordinateWarnings(warnings);
+  return errors.length === 0;
 };
 
 
-  const getTransportationProblem = async (
-    depots: Depot[],
-    customers: Customer[],
-  ) => {
-    const costMatrix: number[][] = await getCostMatrix(depots, customers);
-
-    fetch(`http://127.0.0.1:5100/solvetp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        demand: customers,
-        supply: depots,
-        costMatrix: costMatrix,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        setTransportationProblem(data);
+  
+    // Load scenario data and validate on mount
+    useEffect(() => {
+      fetch("http://127.0.0.1:5100/scenarios_by_id", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenario_id: scenarioId }),
       })
-      .catch((err) => console.error("Fetch error:", err));
-  };
-
-  const getMDVRPProblem = async (
-    depots: Depot[],
-    customers: Customer[],
-    vehicles: Vehicle[],
-  ) => {
-    // Check for coordinate validation errors before proceeding
-    if (validationErrors.length > 0) {
-      setLoading(false);
-      alert("Please fix coordinate validation errors before calculating routes.");
-      return;
-    }
-
-    const costMatrix: number[][] = await getCostMatrix(depots, customers);
-
-    fetch(`http://127.0.0.1:5100/mdvrp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        depots: depots,
-        customers: customers,
-        vehicles: vehicles,
-        costMatrix: costMatrix,
-      }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
+        .then((res) => res.json())
+        .then((data) => {
+          setCustomers(data.customers);
+          setDepots(data.depots);
+          setVehicles(data.vehicles);
+          setTitle(data.name);
+          setCenter(getFirstLatLng(data.customers));
+        })
+        .catch((err) => {
+          console.error("Fetch error:", err);
+        });
+    }, [scenarioId]);
+  
+    useEffect(() => {
+      if (customers.length > 0 || depots.length > 0) {
+        const timer = setTimeout(() => {
+          validateAllCoordinates();
+        }, 100);
+        return () => clearTimeout(timer);
+      }
+    }, [customers, depots]);
+  
+    useEffect(() => {
+      if (validCustomers.length < 2) return;
+  
+      const fetchRoute = async () => {
+        const coordsString = validCustomers
+          .map((c) => getLngLat(c).join(","))
+          .join(";");
+  
+        const url = `https://router.project-osrm.org/route/v1/driving/${coordsString}?overview=full&geometries=geojson`;
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+  
+          if (!data.routes || data.routes.length === 0) {
+            console.error("No route found");
+            setRouteCoords([]);
+            return;
+          }
+  
+          const coords = data.routes[0].geometry.coordinates.map(
+            ([lng, lat]: [number, number]) => [lat, lng],
+          );
+  
+          setRouteCoords(coords);
+        } catch (error) {
+          console.error("Failed to fetch route:", error);
+        }
+      };
+  
+      fetchRoute();
+    }, [validCustomers]);
+  
+  
+  
+    const addCustomer = () => {
+      if (!handleModalValidation(customerInput.customer_x, customerInput.customer_y)) return;
+  
+      const current_id = get_date_time();
+      fetch("http://127.0.0.1:5100/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...customerInput,
+          scenario_id: scenarioId,
+          customer_id: current_id,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setCustomers([...customers, { ...data, id: current_id }]);
+          setCustomerInput({ customer_x: 0, customer_y: 0, demand: 0, customer_name: "" });
+          setShowModal(null);
+          setModalValidationError("");
+        })
+        .catch((err) => console.error("Failed to add customer:", err));
+    };
+  
+    const removeCustomer = (id: number) => {
+      fetch(`http://127.0.0.1:5100/customers`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_id: id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") setCustomers(customers.filter((c) => c.id !== id));
+          else console.error("Failed to delete customer:", data.error);
+        })
+        .catch((err) => console.error("Fetch error:", err));
+    };
+  
+    const addDepot = () => {
+      if (!handleModalValidation(depotInput.depot_x, depotInput.depot_y)) return;
+  
+      const current_id = get_date_time();
+      fetch(`http://127.0.0.1:5100/depots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...depotInput, scenario_id: scenarioId, depot_id: current_id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setDepots([...depots, { ...data, id: current_id }]);
+          setDepotInput({ depot_name: "", depot_x: 0, depot_y: 0, capacity: 0, maxDistance: 0, type: "" });
+          setShowModal(null);
+          setModalValidationError("");
+        })
+        .catch((err) => console.error("Failed to add depot:", err));
+    };
+  
+    const removeDepot = (id: number) => {
+      fetch(`http://127.0.0.1:5100/depots`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ depot_id: id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") setDepots(depots.filter((d) => d.id !== id));
+          else console.error("Failed to delete depot:", data.error);
+        })
+        .catch((err) => console.error("Fetch error:", err));
+    };
+  
+    const addVehicle = () => {
+      const current_id = get_date_time();
+      fetch(`http://127.0.0.1:5100/vehicles`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...vehicleInput, scenario_id: scenarioId, vehicle_id: current_id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          setVehicles([...vehicles, { ...data[0], id: current_id }]);
+          setVehicleInput({ capacity: 0, depot_id: 0 });
+          setShowModal(null);
+        })
+        .catch((err) => console.error("Failed to add vehicle:", err));
+    };
+  
+    const removeVehicle = (id: number) => {
+      fetch(`http://127.0.0.1:5100/vehicles`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vehicle_id: id }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") setVehicles(vehicles.filter((v) => v.id !== id));
+          else console.error("Failed to delete vehicle:", data.error);
+        })
+        .catch((err) => console.error("Fetch error:", err));
+    };
+  
+    const getTransportationProblem = async (depots: Depot[], customers: Customer[]) => {
+      const costMatrix: number[][] = await getCostMatrix(depots, customers);
+      fetch(`http://127.0.0.1:5100/solvetp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demand: customers, supply: depots, costMatrix }),
+      })
+        .then((res) => res.json())
+        .then((data) => setTransportationProblem(data))
+        .catch((err) => console.error("Fetch error:", err));
+    };
+  
+    const getMDVRPProblem = async (depots: Depot[], customers: Customer[], vehicles: Vehicle[]) => {
+      if (validationErrors.length > 0) {
+        setLoading(false);
+        alert("Please fix coordinate validation errors before calculating routes.");
+        return;
+      }
+      try {
+        const costMatrix: number[][] = await getCostMatrix(depots, customers);
+        const response = await fetch(`http://127.0.0.1:5100/mdvrp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ depots, customers, vehicles, costMatrix }),
+        });
+        const data = await response.json();
         setMDVRPProblem(data);
         setRouteCoords(makeRouteList(data.routes));
-        validateAll()
         setLoading(false);
-
+  
         if (!inputValidator.isValid()) {
-          console.log("Validation errors:", inputValidator.getErrors());
-          setValidationErrors([...validationErrors, ...inputValidator.getErrors()]);
+          setValidationErrors(prev => [...prev, ...inputValidator.getErrors()]);
           return;
         }
-                validateAll()
-
         inputValidator.resetErrors();
-
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Fetch error:", err);
         setLoading(false);
+      }
+    };
+  
+    const getCoordinatesFromName = (name: string): [number, number] | undefined => {
+      const depot = depots.find((d) => d.depot_name?.toLowerCase().includes(name.toLowerCase()));
+      if (depot) return [depot.depot_x, depot.depot_y];
+      const customer = customers.find((c) => c.customer_name?.toLowerCase().includes(name.toLowerCase()));
+      if (customer) return [customer.customer_x, customer.customer_y];
+      console.warn("No coordinates found for", name);
+      return undefined;
+    };
+  
+    const makeRouteList = (routeArray: { id: string; route: string[] }[]): Route[] => {
+      return routeArray.map((route_info) => {
+        const coords: [number, number][] = [];
+        route_info.route.forEach((name) => {
+          const point = getCoordinatesFromName(name);
+          if (point) coords.push(point);
+        });
+        if (coords.length > 0) coords.push(coords[0]);
+        return { id: route_info.id, route: coords };
       });
-  };
-
-  const getCoordinatesFromName = (
-    name: string,
-  ): [number, number] | undefined => {
-    const depot = depots.find((d) =>
-      d.depot_name?.toLowerCase().includes(name.toLowerCase()),
-    );
-    if (depot) return [depot.depot_x, depot.depot_y];
-
-    const customer = customers.find((c) =>
-      c.customer_name?.toLowerCase().includes(name.toLowerCase()),
-    );
-    if (customer) return [customer.customer_x, customer.customer_y];
-
-    console.warn("No coordinates found for", name);
-    return undefined;
-  };
-
-  const makeRouteList = (
-    routeArray: { id: string; route: string[] }[],
-  ): Route[] => {
-    return routeArray.map((route_info) => {
-      const coords: [number, number][] = [];
-
-      route_info.route.forEach((name) => {
-        const point = getCoordinatesFromName(name);
-        if (point) coords.push(point);
-      });
-
-      // return to origin
-      if (coords.length > 0) coords.push(coords[0]);
-      return {
-        id: route_info.id,
-        route: coords,
-      };
-    });
-  };
-
-  // Enhanced route rendering with validation
-  const renderRoutes = () => {
-    if (!routeCoords) return null;
-
-    const invalidRoutes: string[] = [];
-    
-    const validRouteCoords = routeCoords
-      ?.filter((r) => {
-        if (!r.route?.length || r.route.length < 2) {
-          return false;
-        }
-
-        // Validate each coordinate in the route
-        for (let i = 0; i < r.route.length; i++) {
-          const [lat, lng] = r.route[i];
-          const validation = CoordinateValidator.validateCoordinate(lat, lng);
-          
-          if (!validation.valid) {
-            invalidRoutes.push(`Route ${r.id}: Point ${i + 1} - ${validation.error}`);
-            return false;
-          }
-
-          // Check for duplicate points in the same route
-          // for (let j = i + 1; j < r.route.length; j++) {
-          //   const [lat2, lng2] = r.route[j];
-          //   if (CoordinateValidator.areCoordinatesTooClose(lat, lng, lat2, lng2)) {
-          //     invalidRoutes.push(
-          //       `Route ${r.id}: Points ${i + 1} and ${j + 1} are too close`
-          //     );
-          //     return false;
-          //   }
-          // }
-        }
-
-        return true;
-      });
-
-    return validRouteCoords?.map((coord, index) => (
-      <RoutingMachine
-        key={coord.id}
-        route={coord.route}
-        color={index === 0 ? "red" : "blue"}
-        inputValidator={inputValidator}
-      />
-    ));
-  };
-
+    };
+  
+    const renderRoutes = () => {
+      if (!routeCoords || routeCoords.length === 0) return null;
+      const validRouteCoords = routeCoords.filter((r) => r.route?.length && r.route.length >= 2 &&
+        r.route.every(([lat, lng]) => typeof lat === 'number' && typeof lng === 'number' && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 && !isNaN(lat) && !isNaN(lng))
+      );
+      return validRouteCoords.map((coord, index) => (
+        <RoutingMachine key={coord.id} route={coord.route} color={index === 0 ? "red" : "blue"} />
+      ));
+    };
+  
+  
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
       {/* Validation Alerts */}
-      {(validationErrors.length > 0 || coordinateWarnings.length > 0) && (
+      {validationErrors.length > 0 && (
         <div
           style={{
             position: "absolute",
@@ -605,16 +415,6 @@ const MapRoute = () => {
               <ul className="mb-0">
                 {validationErrors.map((error, index) => (
                   <li key={index}>{error}</li>
-                ))}
-              </ul>
-            </Alert>
-          )}
-          {coordinateWarnings.length > 0 && (
-            <Alert variant="warning" className="mb-2">
-              <Alert.Heading>Coordinate Warnings</Alert.Heading>
-              <ul className="mb-0">
-                {coordinateWarnings.map((warning, index) => (
-                  <li key={index}>{warning}</li>
                 ))}
               </ul>
             </Alert>
@@ -802,6 +602,7 @@ const MapRoute = () => {
             disabled={validationErrors.length > 0 || loading}
             onClick={() => {
               setLoading(true);
+              validateAllCoordinates();
               getMDVRPProblem(depots, customers, vehicles);
             }}
             title={validationErrors.length > 0 ? "Fix coordinate errors first" : "Calculate routes"}
@@ -824,8 +625,6 @@ const MapRoute = () => {
           </Button>
         </div>
       </div>
-
-      {/* Rest of your existing UI elements... */}
       <div
         style={{
           position: "absolute",
@@ -1017,10 +816,6 @@ const MapRoute = () => {
                       ...customerInput,
                       customer_x: value,
                     });
-                    // Real-time validation
-                    if (customerInput.customer_y !== 0) {
-                      validateModalInput(value, customerInput.customer_y);
-                    }
                   }}
                   className={modalValidationError ? "is-invalid" : ""}
                 />
@@ -1037,10 +832,6 @@ const MapRoute = () => {
                       ...customerInput,
                       customer_y: value,
                     });
-                    // Real-time validation
-                    if (customerInput.customer_x !== 0) {
-                      validateModalInput(customerInput.customer_x, value);
-                    }
                   }}
                   className={modalValidationError ? "is-invalid" : ""}
                 />
@@ -1098,10 +889,6 @@ const MapRoute = () => {
                       ...depotInput,
                       depot_x: value,
                     });
-                    // Real-time validation
-                    if (depotInput.depot_y !== 0) {
-                      validateModalInput(value, depotInput.depot_y);
-                    }
                   }}
                   className={modalValidationError ? "is-invalid" : ""}
                 />
@@ -1118,10 +905,6 @@ const MapRoute = () => {
                       ...depotInput,
                       depot_y: value,
                     });
-                    // Real-time validation
-                    if (depotInput.depot_x !== 0) {
-                      validateModalInput(depotInput.depot_x, value);
-                    }
                   }}
                   className={modalValidationError ? "is-invalid" : ""}
                 />
