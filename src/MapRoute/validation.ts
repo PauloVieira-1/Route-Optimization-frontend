@@ -23,8 +23,7 @@ export const validateData = (
   }
 
   // 4️⃣ Run other class checks if needed (optional)
-  validator.isValid();
-  const classErrors = validator.getErrors();
+  const classErrors = validator.validateAll();
   if (classErrors.length > 0) {
     validationErrors.push(...classErrors);
     return false;

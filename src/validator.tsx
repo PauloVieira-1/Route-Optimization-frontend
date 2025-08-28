@@ -23,8 +23,16 @@ class Validator {
   private addError(error: string) {
     if (!this.errors.includes(error)) {
       this.errors.push(error);
+      console.error(error);
     }
   }
+
+  public setData(customers: Customer[], depots: Depot[], vehicles: Vehicle[]) {
+  this.customers = customers;
+  this.depots = depots;
+  this.vehicles = vehicles;
+}
+
 
   // --- Coordinate validation ---
   private static isLikelyOnLand(lat: number, lng: number): boolean {

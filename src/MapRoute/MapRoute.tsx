@@ -64,6 +64,9 @@ const MapRoute = () => {
   // Validation states
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [modalValidationError, setModalValidationError] = useState<string>("");
+  const [routingError, setRoutingError] = useState<string>("");
+  const [routingErrorShown, setRoutingErrorShown] = useState<boolean>(false);
+
 
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -220,6 +223,10 @@ const MapRoute = () => {
     fetchRoute();
   }, [validCustomers]);
 
+  useEffect(() => {
+  setRoutingErrorShown(false);
+}, [customers, depots]);
+
   const addCustomer = () => {
     if (
       !handleModalValidation(customerInput.customer_x, customerInput.customer_y)
@@ -361,40 +368,41 @@ const MapRoute = () => {
       .catch((err) => console.error("Fetch error:", err));
   };
 
-  const getMDVRPProblem = async (
-    depots: Depot[],
-    customers: Customer[],
-    vehicles: Vehicle[],
-  ) => {
-    if (validationErrors.length > 0) {
-      setLoading(false);
-      alert(
-        "Please fix coordinate validation errors before calculating routes.",
-      );
-      return;
-    }
-    try {
-      const costMatrix: number[][] = await getCostMatrix(depots, customers);
-      const response = await fetch(`http://127.0.0.1:5100/mdvrp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ depots, customers, vehicles, costMatrix }),
-      });
-      const data = await response.json();
-      setMDVRPProblem(data);
-      setRouteCoords(makeRouteList(data.routes));
-      setLoading(false);
+const getMDVRPProblem = async (
+  depots: Depot[],
+  customers: Customer[],
+  vehicles: Vehicle[],
+) => {
+  // Always update validator with latest data
+  inputValidator.setData(customers, depots, vehicles);
 
-      if (!inputValidator.isValid()) {
-        setValidationErrors((prev) => [...prev, ...inputValidator.getErrors()]);
-        return;
-      }
-      inputValidator.resetErrors();
-    } catch (err) {
-      console.error("Fetch error:", err);
-      setLoading(false);
-    }
-  };
+  const errors = inputValidator.validateAll();
+  console.log(errors);
+
+  if (errors.length > 0) {
+    setValidationErrors(errors);
+    setLoading(false);
+    alert("Please fix validation errors before calculating routes.");
+    return;
+  }
+
+  try {
+    const costMatrix: number[][] = await getCostMatrix(depots, customers);
+    const response = await fetch(`http://127.0.0.1:5100/mdvrp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ depots, customers, vehicles, costMatrix }),
+    });
+    const data = await response.json();
+    setMDVRPProblem(data);
+    setRouteCoords(makeRouteList(data.routes));
+    setLoading(false);
+  } catch (err) {
+    console.error("Fetch error:", err);
+    setLoading(false);
+  }
+};
+
 
   const getCoordinatesFromName = (
     name: string,
@@ -448,39 +456,48 @@ const MapRoute = () => {
         key={coord.id}
         route={coord.route}
         color={index === 0 ? "red" : "blue"}
+        onError={handleRoutingError}
       />
     ));
   };
 
+
+const handleRoutingError = (error: any) => {
+  console.error("Routing error:", error);
+  
+  // Only set error if it hasn't been shown already
+  if (!routingErrorShown) {
+    const errorMessage = "Route cannot be found. Please check that coordinates comply with constraints and are accessible by road.";
+    setRoutingError(errorMessage);
+    setRoutingErrorShown(true);
+  }
+};
+
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
-      {/* Validation Alerts */}
-      {validationErrors.length > 0 && (
-        <div
-          style={{
-            position: "absolute",
-            top: "20%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            zIndex: 1500,
-            maxWidth: "500px",
-          }}
-        >
-          {validationErrors.length > 0 && (
-            <Alert variant="danger" className="mb-2">
-              <Alert.Heading>
+      {/* Routing Error Alert */}
+        {routingError && (
+          <div
+            style={{
+              position: "absolute",
+              top: "10%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 1500,
+              maxWidth: "500px",
+            }}
+          >
+<Alert variant="danger" className="mb-2" dismissible onClose={() => {
+  setRoutingError("");
+  setRoutingErrorShown(false);
+}}>              <Alert.Heading>
                 <FaExclamationTriangle className="me-2" />
-                Coordinate Validation Errors
+                Routing Error
               </Alert.Heading>
-              <ul className="mb-0">
-                {validationErrors.map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
+              {routingError}
             </Alert>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
       {/* Top-left overlay */}
       <div
@@ -865,13 +882,12 @@ const MapRoute = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-          {modalValidationError && (
-            <Alert variant="danger" className="mb-3">
-              <FaExclamationTriangle className="me-2" />
-              {modalValidationError}
-            </Alert>
-          )}
-
+         {modalValidationError && (
+  <Alert variant="danger" className="mb-3">
+    <FaExclamationTriangle className="me-2" />
+    {modalValidationError}
+  </Alert>
+)}
           {showModal === "customer" && (
             <>
               <Form.Group className="mb-2">
@@ -1088,7 +1104,6 @@ const MapRoute = () => {
               if (showModal === "depot") addDepot();
               if (showModal === "vehicle") addVehicle();
             }}
-            disabled={modalValidationError !== ""}
             className="rounded-pill px-5 py-4 button-circle bg-custom-color-grey-lighter"
           >
             Add

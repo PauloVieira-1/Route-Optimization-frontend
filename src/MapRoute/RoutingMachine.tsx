@@ -6,9 +6,10 @@ import { useMap } from "react-leaflet";
 interface RoutingProps {
   route: [number, number][];
   color?: string;
+  onError?: (err: any) => void;   // callback for errors
 }
 
-const RoutingMachine: React.FC<RoutingProps> = ({ route, color = "blue" }) => {
+const RoutingMachine: React.FC<RoutingProps> = ({ route, color = "blue", onError }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -24,9 +25,21 @@ const RoutingMachine: React.FC<RoutingProps> = ({ route, color = "blue" }) => {
       show: false,
       itinerary: false,
       fitSelectedRoutes: false,
+      // ✅ Custom router with retries disabled
+      router: new (L.Routing.OSRMv1 as any)({
+        serviceUrl: "https://router.project-osrm.org/route/v1",
+        timeout: 10000, // 10s timeout
+        retry: 0,       // ⬅️ disable retry logic
+      }),
     }).addTo(map);
 
-    // Additional CSS to hide any remaining elements
+    // Listen for routing errors
+    control.on("routingerror", (e) => {
+      console.error("Routing error:", e);
+      if (onError) onError(e);
+    });
+
+    // Hide default routing UI
     const style = document.createElement("style");
     style.innerHTML = `
       .leaflet-routing-container {
@@ -39,7 +52,7 @@ const RoutingMachine: React.FC<RoutingProps> = ({ route, color = "blue" }) => {
       map.removeControl(control);
       document.head.removeChild(style);
     };
-  }, [map, route, color]);
+  }, [map, route, color, onError]);
 
   return null;
 };
