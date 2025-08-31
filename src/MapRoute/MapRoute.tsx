@@ -164,7 +164,7 @@ const MapRoute = () => {
 
   // Load scenario data and validate on mount
   useEffect(() => {
-    fetch("http://127.0.0.1:5100/scenarios_by_id", {
+    fetch("https://route-optimization-xb1p.onrender.com/scenarios_by_id", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenario_id: scenarioId }),
@@ -234,7 +234,7 @@ const MapRoute = () => {
       return;
 
     const current_id = get_date_time();
-    fetch("http://127.0.0.1:5100/customers", {
+    fetch("https://route-optimization-xb1p.onrender.com/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -259,7 +259,7 @@ const MapRoute = () => {
   };
 
   const removeCustomer = (id: number) => {
-    fetch(`http://127.0.0.1:5100/customers`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/customers`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ customer_id: id }),
@@ -277,7 +277,7 @@ const MapRoute = () => {
     if (!handleModalValidation(depotInput.depot_x, depotInput.depot_y)) return;
 
     const current_id = get_date_time();
-    fetch(`http://127.0.0.1:5100/depots`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/depots`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -304,7 +304,7 @@ const MapRoute = () => {
   };
 
   const removeDepot = (id: number) => {
-    fetch(`http://127.0.0.1:5100/depots`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/depots`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ depot_id: id }),
@@ -320,7 +320,7 @@ const MapRoute = () => {
 
   const addVehicle = () => {
     const current_id = get_date_time();
-    fetch(`http://127.0.0.1:5100/vehicles`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/vehicles`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -339,7 +339,7 @@ const MapRoute = () => {
   };
 
   const removeVehicle = (id: number) => {
-    fetch(`http://127.0.0.1:5100/vehicles`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/vehicles`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vehicle_id: id }),
@@ -358,7 +358,7 @@ const MapRoute = () => {
     customers: Customer[],
   ) => {
     const costMatrix: number[][] = await getCostMatrix(depots, customers);
-    fetch(`http://127.0.0.1:5100/solvetp`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/solvetp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ demand: customers, supply: depots, costMatrix }),
@@ -388,7 +388,7 @@ const getMDVRPProblem = async (
 
   try {
     const costMatrix: number[][] = await getCostMatrix(depots, customers);
-    const response = await fetch(`http://127.0.0.1:5100/mdvrp`, {
+    const response = await fetch(`https://route-optimization-xb1p.onrender.com/mdvrp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ depots, customers, vehicles, costMatrix }),

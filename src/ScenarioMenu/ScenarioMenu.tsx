@@ -27,7 +27,7 @@ function ScenarioMenu() {
   const [screenshots, setScreenshots] = useState<{ [key: number]: string }>([]);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:5100/scenarios")
+    fetch("https://route-optimization-xb1p.onrender.com/scenarios")
       .then((res) => res.json())
       .then((data) => {
         setScenarios(data);
@@ -44,7 +44,7 @@ function ScenarioMenu() {
   };
 
   function addScenario() {
-    fetch("http://127.0.0.1:5100/scenarios/full", {
+    fetch("https://route-optimization-xb1p.onrender.com/scenarios/full", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newScenario),
@@ -67,7 +67,7 @@ function ScenarioMenu() {
 
   function removeScenario(id: number) {
     console.log("Deleting scenario:", id);
-    fetch(`http://127.0.0.1:5100/scenarios`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/scenarios`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenario_id: id }),
@@ -85,7 +85,7 @@ function ScenarioMenu() {
 
   function updateName(id: number, name: string) {
     console.log("changing Name of ", id + " to " + name);
-    fetch(`http://127.0.0.1:5100/scenarios`, {
+    fetch(`https://route-optimization-xb1p.onrender.com/scenarios`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenario_id: id, new_name: name }),
