@@ -16,7 +16,8 @@ function HomeHeader() {
             Route Optimization Tool
           </h1>
           <p className="mt-2 fs-5 fw-light text-custom-color-grey-lighter">
-            Use this tool to optimize your routes
+            Use this tool to create optimal delivery routes by assigning
+            customers to depots and minimizing travel distance and time.
           </p>
         </Col>
       </Row>
