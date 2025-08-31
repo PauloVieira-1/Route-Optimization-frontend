@@ -24,6 +24,7 @@ import {
   getLatLngDepot,
   getCostMatrix,
 } from "./utiities";
+import L from "leaflet";
 import ZoomTopRight from "./ZoomtoRight";
 import RoutingMachine from "./RoutingMachine";
 import SpinnerComponent from "../Spinner/Spinner";
@@ -31,7 +32,9 @@ import InfoModal from "../InfoModal/InfoModal";
 import InputValidator from "../validator";
 import { validateData } from "./validation";
 import Validator from "../validator";
+import type { RoutingErrorEvent } from "./RoutingMachine";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -56,8 +59,8 @@ const MapRoute = () => {
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   const [title, setTitle] = useState("Scenario");
   const [center, setCenter] = useState<[number, number]>([0, 0]);
-  const [transportationProbelm, setTransportationProblem] =
-    useState<string>("");
+  // const [transportationProbelm, setTransportationProblem] =
+  useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [infoModal, setInfoModal] = useState<boolean>(false);
 
@@ -66,7 +69,6 @@ const MapRoute = () => {
   const [modalValidationError, setModalValidationError] = useState<string>("");
   const [routingError, setRoutingError] = useState<string>("");
   const [routingErrorShown, setRoutingErrorShown] = useState<boolean>(false);
-
 
   // Customers, Depots, Vehicles states
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -122,18 +124,14 @@ const MapRoute = () => {
   const handleModalValidation = (lat: number, lng: number): boolean => {
     setModalValidationError("");
     const errorArray: string[] = [];
-    const setErrorArray = (errors: string[]) => {
-      errorArray.length = 0;
-      errorArray.push(...errors);
-    };
     try {
       const result = validateData(
         lat,
         lng,
         customers,
         depots,
+        vehicles,
         errorArray,
-        setErrorArray,
       );
       if (!result && errorArray.length > 0) {
         setModalValidationError(errorArray[0]);
@@ -161,6 +159,12 @@ const MapRoute = () => {
 
     return errors.length === 0;
   };
+
+  // Log whenever transportationProblem or mdvrpProblem changes
+  useEffect(() => {
+    // console.log(transportationProbelm)
+    console.log(mdvrpProblem);
+  }, [mdvrpProblem]);
 
   // Load scenario data and validate on mount
   useEffect(() => {
@@ -224,8 +228,8 @@ const MapRoute = () => {
   }, [validCustomers]);
 
   useEffect(() => {
-  setRoutingErrorShown(false);
-}, [customers, depots]);
+    setRoutingErrorShown(false);
+  }, [customers, depots]);
 
   const addCustomer = () => {
     if (
@@ -353,56 +357,58 @@ const MapRoute = () => {
       .catch((err) => console.error("Fetch error:", err));
   };
 
-  const getTransportationProblem = async (
+  // const getTransportationProblem = async (
+  //   depots: Depot[],
+  //   customers: Customer[],
+  // ) => {
+  //   const costMatrix: number[][] = await getCostMatrix(depots, customers);
+  //   fetch(`https://route-optimization-xb1p.onrender.com/solvetp`, {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({ demand: customers, supply: depots, costMatrix }),
+  //   })
+  //     .then((res) => res.json())
+  //     .then((data) => setTransportationProblem(data))
+  //     .catch((err) => console.error("Fetch error:", err));
+  // };
+
+  const getMDVRPProblem = async (
     depots: Depot[],
     customers: Customer[],
+    vehicles: Vehicle[],
   ) => {
-    const costMatrix: number[][] = await getCostMatrix(depots, customers);
-    fetch(`https://route-optimization-xb1p.onrender.com/solvetp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ demand: customers, supply: depots, costMatrix }),
-    })
-      .then((res) => res.json())
-      .then((data) => setTransportationProblem(data))
-      .catch((err) => console.error("Fetch error:", err));
+    // Always update validator with latest data
+    inputValidator.setData(customers, depots, vehicles);
+
+    const errors = inputValidator.validateAll();
+    console.log(errors);
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setLoading(false);
+      alert("Please fix validation errors before calculating routes.");
+      return;
+    }
+
+    try {
+      const costMatrix: number[][] = await getCostMatrix(depots, customers);
+      const response = await fetch(
+        `https://route-optimization-xb1p.onrender.com/mdvrp`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ depots, customers, vehicles, costMatrix }),
+        },
+      );
+      const data = await response.json();
+      setMDVRPProblem(data);
+      setRouteCoords(makeRouteList(data.routes));
+      setLoading(false);
+    } catch (err) {
+      console.error("Fetch error:", err);
+      setLoading(false);
+    }
   };
-
-const getMDVRPProblem = async (
-  depots: Depot[],
-  customers: Customer[],
-  vehicles: Vehicle[],
-) => {
-  // Always update validator with latest data
-  inputValidator.setData(customers, depots, vehicles);
-
-  const errors = inputValidator.validateAll();
-  console.log(errors);
-
-  if (errors.length > 0) {
-    setValidationErrors(errors);
-    setLoading(false);
-    alert("Please fix validation errors before calculating routes.");
-    return;
-  }
-
-  try {
-    const costMatrix: number[][] = await getCostMatrix(depots, customers);
-    const response = await fetch(`https://route-optimization-xb1p.onrender.com/mdvrp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ depots, customers, vehicles, costMatrix }),
-    });
-    const data = await response.json();
-    setMDVRPProblem(data);
-    setRouteCoords(makeRouteList(data.routes));
-    setLoading(false);
-  } catch (err) {
-    console.error("Fetch error:", err);
-    setLoading(false);
-  }
-};
-
 
   const getCoordinatesFromName = (
     name: string,
@@ -429,7 +435,8 @@ const getMDVRPProblem = async (
         if (point) coords.push(point);
       });
       if (coords.length > 0) coords.push(coords[0]);
-      return { id: route_info.id, route: coords };
+
+      return { id: Number(route_info.id), route: coords };
     });
   };
 
@@ -461,43 +468,52 @@ const getMDVRPProblem = async (
     ));
   };
 
+  const handleRoutingError = (err: RoutingErrorEvent) => {
+    console.error("Routing error:", err);
 
-const handleRoutingError = (error: any) => {
-  console.error("Routing error:", error);
-  
-  // Only set error if it hasn't been shown already
-  if (!routingErrorShown) {
-    const errorMessage = "Route cannot be found. Please check that coordinates comply with constraints and are accessible by road.";
-    setRoutingError(errorMessage);
-    setRoutingErrorShown(true);
-  }
-};
+    // Only set error if it hasn't been shown already
+    if (!routingErrorShown) {
+      const errorMessage = err.error
+        ? err.error.message
+        : "Route cannot be found. Please check that coordinates comply with constraints and are accessible by road.";
+
+      setRoutingError(errorMessage);
+      setRoutingErrorShown(true);
+    }
+  };
 
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
       {/* Routing Error Alert */}
-        {routingError && (
-          <div
-            style={{
-              position: "absolute",
-              top: "10%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              zIndex: 1500,
-              maxWidth: "500px",
+      {routingError && (
+        <div
+          style={{
+            position: "absolute",
+            top: "10%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 1500,
+            maxWidth: "500px",
+          }}
+        >
+          <Alert
+            variant="danger"
+            className="mb-2"
+            dismissible
+            onClose={() => {
+              setRoutingError("");
+              setRoutingErrorShown(false);
             }}
           >
-<Alert variant="danger" className="mb-2" dismissible onClose={() => {
-  setRoutingError("");
-  setRoutingErrorShown(false);
-}}>              <Alert.Heading>
-                <FaExclamationTriangle className="me-2" />
-                Routing Error
-              </Alert.Heading>
-              {routingError}
-            </Alert>
-          </div>
-        )}
+            {" "}
+            <Alert.Heading>
+              <FaExclamationTriangle className="me-2" />
+              Routing Error
+            </Alert.Heading>
+            {routingError}
+          </Alert>
+        </div>
+      )}
 
       {/* Top-left overlay */}
       <div
@@ -882,12 +898,12 @@ const handleRoutingError = (error: any) => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-4">
-         {modalValidationError && (
-  <Alert variant="danger" className="mb-3">
-    <FaExclamationTriangle className="me-2" />
-    {modalValidationError}
-  </Alert>
-)}
+          {modalValidationError && (
+            <Alert variant="danger" className="mb-3">
+              <FaExclamationTriangle className="me-2" />
+              {modalValidationError}
+            </Alert>
+          )}
           {showModal === "customer" && (
             <>
               <Form.Group className="mb-2">

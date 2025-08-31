@@ -40,12 +40,6 @@ function InfoModal({ show, onHide }: InfoModalProps) {
     marginBottom: "1rem",
   };
 
-  const footerStyle: React.CSSProperties = {
-    borderTop: "1px solid #f0f0f0",
-    justifyContent: "flex-end",
-    paddingTop: "1rem",
-  };
-
   const highlightRed: React.CSSProperties = {
     color: "#e53935",
     fontWeight: "600",

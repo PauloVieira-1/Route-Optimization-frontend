@@ -3,13 +3,21 @@ import L from "leaflet";
 import "leaflet-routing-machine";
 import { useMap } from "react-leaflet";
 
+export interface RoutingErrorEvent extends L.LeafletEvent {
+  error?: Error;
+}
+
 interface RoutingProps {
   route: [number, number][];
   color?: string;
-  onError?: (err: any) => void;   // callback for errors
+  onError?: (err: RoutingErrorEvent) => void;
 }
 
-const RoutingMachine: React.FC<RoutingProps> = ({ route, color = "blue", onError }) => {
+const RoutingMachine: React.FC<RoutingProps> = ({
+  route,
+  color = "blue",
+  onError,
+}) => {
   const map = useMap();
 
   useEffect(() => {
@@ -17,24 +25,26 @@ const RoutingMachine: React.FC<RoutingProps> = ({ route, color = "blue", onError
 
     const control = L.Routing.control({
       waypoints: route.map((c) => L.latLng(c[0], c[1])),
-      lineOptions: { styles: [{ color, weight: 5 }] },
+      lineOptions: {
+        styles: [{ color, weight: 5 }],
+        extendToWaypoints: true,
+        missingRouteTolerance: 0,
+      },
       addWaypoints: false,
+      // @ts-expect-error createMarker exists at runtime but TS types are missing
       createMarker: () => null,
       routeWhileDragging: false,
       collapsible: false,
       show: false,
       itinerary: false,
       fitSelectedRoutes: false,
-      // ✅ Custom router with retries disabled
-      router: new (L.Routing.OSRMv1 as any)({
+      router: new (L.Routing.OSRMv1 as unknown as typeof L.Routing.OSRMv1)({
         serviceUrl: "https://router.project-osrm.org/route/v1",
-        timeout: 10000, // 10s timeout
-        retry: 0,       // ⬅️ disable retry logic
+        timeout: 10000,
       }),
     }).addTo(map);
 
-    // Listen for routing errors
-    control.on("routingerror", (e) => {
+    control.on("routingerror", (e: RoutingErrorEvent) => {
       console.error("Routing error:", e);
       if (onError) onError(e);
     });

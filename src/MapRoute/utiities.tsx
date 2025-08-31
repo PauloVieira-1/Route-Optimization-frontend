@@ -3,7 +3,6 @@ import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine";
 import type { LatLngTuple } from "leaflet";
 import type { Customer } from "../types";
-import InputValidator from "../validator";
 
 // This file contains various utility functions that are used throughout the MapRoute component.
 //
@@ -189,7 +188,6 @@ const getCostMatrix = async (
     return infMatrix;
   } catch (error) {
     console.error("Failed to fetch route:", error);
-    InputValidator.addError("Failed to fetch route");
 
     // fallback: Euclidean distance
     return depots.map((depot) =>
