@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { MapContainer, TileLayer } from "react-leaflet";
 import html2canvas from "html2canvas";
 import "leaflet/dist/leaflet.css";
-import "./Scenario.css";
+import "./scenario.css";
 
 interface ScenarioProps {
   id: number;
