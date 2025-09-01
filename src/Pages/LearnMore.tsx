@@ -17,7 +17,7 @@ function LearnMore() {
               How it works
             </h1>
             <p className="mt-2 fs-5 fw-light text-custom-color-grey-lighter">
-             Routing algorithms and optimization models are used to assign
+              Routing algorithms and optimization models are used to assign
               customers to depots and generate efficient delivery routes.
             </p>
           </Col>

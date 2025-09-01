@@ -57,6 +57,7 @@ const MapRoute = () => {
   const [routeCoords, setRouteCoords] = useState<Route[]>([]);
   const [isOverlayOpenPlus, setIsOverlayOpenPlus] = useState(true);
   const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [title, setTitle] = useState("Scenario");
   const [center, setCenter] = useState<[number, number]>([0, 0]);
   // const [transportationProbelm, setTransportationProblem] =
@@ -533,7 +534,7 @@ const MapRoute = () => {
         <div className="d-flex align-items-center justify-content-center mb-4">
           <h1 className="fw-bold fs-2 me-3">Parameters</h1>
         </div>
-        <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 300px)" }}>
+        <div style={{ overflowY: "auto", maxHeight: "calc(100vh - 270px)" }}>
           {/* Customers Section */}
           <div className="section-header">
             <h4 className="fw-bold">Customers</h4>
@@ -756,26 +757,95 @@ const MapRoute = () => {
         }}
         className="m-4 rounded-4 py-4 px-3 rounded-pill"
       >
-        {/* Circular plus button with FaPlus icon */}
-        <button
-          style={{
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            backgroundColor: "#0d6efd", // Bootstrap primary
-            color: "white",
-            border: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "18px",
-            transition: "all 0.3s",
-          }}
-          className="button-circle "
-        >
-          <FaPlus />
-        </button>
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "50%",
+              backgroundColor: "#0d6efd", // Bootstrap primary
+              color: "white",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "18px",
+              transition: "all 0.3s",
+            }}
+            className="button-circle"
+          >
+            <FaPlus />
+          </button>
+
+          {/* Popup Menu with smooth transition */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: "62px",
+              left: "0",
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+              borderRadius: "20px",
+              boxShadow: "0px 4px 8px rgba(0,0,0,0.1)",
+              padding: "18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              zIndex: 2000,
+              minWidth: "150px",
+
+              /* animation */
+              opacity: isMenuOpen ? 1 : 0,
+              transform: isMenuOpen ? "translateY(0)" : "translateY(10px)",
+              pointerEvents: isMenuOpen ? "auto" : "none",
+              transition: "opacity 0.3s ease, transform 0.3s ease",
+            }}
+          >
+            <button
+              style={{
+                width: "100%",
+                borderRadius: "20px",
+                border: "none",
+                backgroundColor: "transparent",
+                padding: "8px",
+                cursor: "pointer",
+                transition: "all 0.3s",
+              }}
+              className="button-circle text-custom-color-grey-light fw-bold"
+            >
+              Feature 1
+            </button>
+            <button
+              style={{
+                width: "100%",
+                borderRadius: "20px",
+                border: "none",
+                backgroundColor: "transparent",
+                padding: "8px",
+                cursor: "pointer",
+                transition: "all 0.3s",
+              }}
+              className="button-circle text-custom-color-grey-light fw-bold"
+            >
+              Feature 2
+            </button>
+            <button
+              style={{
+                width: "100%",
+                borderRadius: "20px",
+                border: "none",
+                backgroundColor: "transparent",
+                padding: "8px",
+                cursor: "pointer",
+                transition: "all 0.3s",
+              }}
+              className="button-circle text-custom-color-grey-light fw-bold"
+            >
+              Feature 3
+            </button>
+          </div>
+        </div>
 
         <p className="text-custom-color-grey-lighter fw-bold fs-4 m-0 ps-2">
           {title}
