@@ -1222,7 +1222,7 @@ const MapRoute = () => {
       <RoutePlanModal
         show={showPlan}
         onHide={() => setShowPlan(false)}
-        data={mdvrpProblem}
+        data={mdvrpProblem ? JSON.parse(mdvrpProblem) : undefined}
       />
     </div>
   );

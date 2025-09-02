@@ -1,8 +1,20 @@
-import { Modal, Button, ListGroup, Table } from "react-bootstrap";
+import { Modal, ListGroup, Table } from "react-bootstrap";
+
+interface Route {
+  capacity: number;
+  route: string[];
+  vehicle: string;
+}
+
+interface RoutePlanData {
+  routes: Route[];
+  status: string;
+  total_cost: number;
+}
 
 interface RoutePlanModalProps {
   show: boolean;
-  data?: any;
+  data?: RoutePlanData;
   onHide: () => void;
 }
 
@@ -38,8 +50,8 @@ export default function RoutePlanModal({
 
             {/* Routes list */}
             <ListGroup>
-              {data.routes.map((route: any, idx: number) => (
-                <ListGroup.Item key={idx} className="mb-3">
+              {data.routes.map((route, idx) => (
+                <ListGroup.Item key={route.vehicle} className="mb-3">
                   <h6 className="fw-bold">Vehicle: {idx + 1}</h6>
                   <p>
                     <strong>Capacity:</strong> {route.capacity}
@@ -53,7 +65,7 @@ export default function RoutePlanModal({
                       </tr>
                     </thead>
                     <tbody>
-                      {route.route.map((stop: string, stopIdx: number) => (
+                      {route.route.map((stop, stopIdx) => (
                         <tr key={stopIdx}>
                           <td>{stopIdx + 1}</td>
                           <td>{stop}</td>
@@ -67,15 +79,6 @@ export default function RoutePlanModal({
           </>
         )}
       </Modal.Body>
-
-      {/* <Modal.Footer>
-        <Button variant="secondary" onClick={onHide}>
-          Close
-        </Button>
-        <Button variant="primary" onClick={() => alert("Route planned!")}>
-          Plan Route
-        </Button>
-      </Modal.Footer> */}
     </Modal>
   );
 }
