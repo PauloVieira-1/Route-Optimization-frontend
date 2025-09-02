@@ -33,6 +33,7 @@ import InputValidator from "../validator";
 import { validateData } from "./validation";
 import Validator from "../validator";
 import type { RoutingErrorEvent } from "./RoutingMachine";
+import RoutePlanModal from "./RoutePlanModal";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -64,6 +65,8 @@ const MapRoute = () => {
   useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [infoModal, setInfoModal] = useState<boolean>(false);
+  const [showPlan, setShowPlan] = useState<boolean>(false);
+  const [hasMDVRPRoutes, setHasMDVRPRoutes] = useState<boolean>(false);
 
   // Validation states
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -196,8 +199,9 @@ const MapRoute = () => {
     }
   }, [customers, depots]);
 
+  // FIXED: Only fetch basic routes when no MDVRP routes exist
   useEffect(() => {
-    if (validCustomers.length < 2) return;
+    if (validCustomers.length < 2 || hasMDVRPRoutes) return;
 
     const fetchRoute = async () => {
       const coordsString = validCustomers
@@ -226,11 +230,13 @@ const MapRoute = () => {
     };
 
     fetchRoute();
-  }, [validCustomers]);
+  }, [validCustomers, hasMDVRPRoutes]);
 
+  // FIXED: Only reset on significant data changes
   useEffect(() => {
     setRoutingErrorShown(false);
-  }, [customers, depots]);
+    setHasMDVRPRoutes(false);
+  }, [customers.length, depots.length, vehicles.length]);
 
   const addCustomer = () => {
     if (
@@ -251,6 +257,7 @@ const MapRoute = () => {
       .then((res) => res.json())
       .then((data) => {
         setCustomers([...customers, { ...data, id: current_id }]);
+        setHasMDVRPRoutes(false); // Reset MDVRP flag
         setCustomerInput({
           customer_x: 0,
           customer_y: 0,
@@ -271,9 +278,10 @@ const MapRoute = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status === "success")
+        if (data.status === "success") {
           setCustomers(customers.filter((c) => c.id !== id));
-        else console.error("Failed to delete customer:", data.error);
+          setHasMDVRPRoutes(false); // Reset MDVRP flag
+        } else console.error("Failed to delete customer:", data.error);
       })
       .catch((err) => console.error("Fetch error:", err));
   };
@@ -294,6 +302,7 @@ const MapRoute = () => {
       .then((res) => res.json())
       .then((data) => {
         setDepots([...depots, { ...data, id: current_id }]);
+        setHasMDVRPRoutes(false); // Reset MDVRP flag
         setDepotInput({
           depot_name: "",
           depot_x: 0,
@@ -316,9 +325,10 @@ const MapRoute = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status === "success")
+        if (data.status === "success") {
           setDepots(depots.filter((d) => d.id !== id));
-        else console.error("Failed to delete depot:", data.error);
+          setHasMDVRPRoutes(false); // Reset MDVRP flag
+        } else console.error("Failed to delete depot:", data.error);
       })
       .catch((err) => console.error("Fetch error:", err));
   };
@@ -337,6 +347,7 @@ const MapRoute = () => {
       .then((res) => res.json())
       .then((data) => {
         setVehicles([...vehicles, { ...data[0], id: current_id }]);
+        setHasMDVRPRoutes(false); // Reset MDVRP flag
         setVehicleInput({ capacity: 0, depot_id: 0 });
         setShowModal(null);
       })
@@ -351,9 +362,10 @@ const MapRoute = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status === "success")
+        if (data.status === "success") {
           setVehicles(vehicles.filter((v) => v.id !== id));
-        else console.error("Failed to delete vehicle:", data.error);
+          setHasMDVRPRoutes(false); // Reset MDVRP flag
+        } else console.error("Failed to delete vehicle:", data.error);
       })
       .catch((err) => console.error("Fetch error:", err));
   };
@@ -404,6 +416,7 @@ const MapRoute = () => {
       const data = await response.json();
       setMDVRPProblem(data);
       setRouteCoords(makeRouteList(data.routes));
+      setHasMDVRPRoutes(true); // Set flag when MDVRP routes are calculated
       setLoading(false);
     } catch (err) {
       console.error("Fetch error:", err);
@@ -482,7 +495,6 @@ const MapRoute = () => {
       setRoutingErrorShown(true);
     }
   };
-
   return (
     <div style={{ position: "relative", height: "100vh", width: "100%" }}>
       {/* Routing Error Alert */}
@@ -507,11 +519,14 @@ const MapRoute = () => {
             }}
           >
             {" "}
-            <Alert.Heading>
-              <FaExclamationTriangle className="me-2" />
+            <Alert.Heading className="mb-3">
+              <FaExclamationTriangle className="me-2 mt-0" />
               Routing Error
             </Alert.Heading>
             {routingError}
+            <div className="d-flex justify-content-center mt-2">
+              <p>Try using different coordinates</p>
+            </div>
           </Alert>
         </div>
       )}
@@ -554,7 +569,7 @@ const MapRoute = () => {
               return (
                 <li
                   key={c.id}
-                  className={`list-item ${hasError ? "border-danger" : ""}`}
+                  className={`list-item bg-custom-color-grey-lighter2 ${hasError ? "border-danger" : ""}`}
                 >
                   <div>
                     <strong className={hasError ? "text-danger" : ""}>
@@ -607,7 +622,7 @@ const MapRoute = () => {
               return (
                 <li
                   key={d.id}
-                  className={`list-item ${hasError ? "border-danger" : ""}`}
+                  className={`list-item bg-custom-color-grey-lighter2 ${hasError ? "border-danger" : ""}`}
                 >
                   <div>
                     <strong className={hasError ? "text-danger" : ""}>
@@ -659,9 +674,14 @@ const MapRoute = () => {
               <FaPlus />
             </button>
           </div>
+          <hr className="w-100 mb-4" />
+
           <ul className="list">
             {vehicles?.map((v) => (
-              <li key={v.id} className="list-item">
+              <li
+                key={v.id}
+                className="list-item bg-custom-color-grey-lighter2"
+              >
                 <div>
                   <div style={{ marginTop: "2px" }}>
                     <span style={{ fontWeight: 500 }}>Capacity:</span>{" "}
@@ -813,8 +833,9 @@ const MapRoute = () => {
                 transition: "all 0.3s",
               }}
               className="button-circle text-custom-color-grey-light fw-bold"
+              onClick={() => setShowPlan(true)}
             >
-              Feature 1
+              Route Plan
             </button>
             <button
               style={{
@@ -1198,6 +1219,11 @@ const MapRoute = () => {
       </Modal>
 
       <InfoModal show={infoModal} onHide={() => setInfoModal(false)} />
+      <RoutePlanModal
+        show={showPlan}
+        onHide={() => setShowPlan(false)}
+        data={mdvrpProblem}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { Modal, Button } from "react-bootstrap";
+import { Modal } from "react-bootstrap";
 
 interface InfoModalProps {
   show: boolean;
@@ -17,10 +17,10 @@ function InfoModal({ show, onHide }: InfoModalProps) {
     fontSize: "1rem",
     lineHeight: 1.6,
     color: "#333",
-    paddingTop: "1rem",
-    paddingBottom: "1rem",
-    paddingLeft: "2rem",
-    paddingRight: "2rem",
+    paddingTop: "0.8rem",
+    paddingBottom: "1.5rem",
+    paddingLeft: "2.5rem",
+    paddingRight: "2.5rem",
   };
 
   const sectionTitleStyle: React.CSSProperties = {
@@ -106,7 +106,7 @@ function InfoModal({ show, onHide }: InfoModalProps) {
         </div>
       </Modal.Body>
 
-      <Modal.Footer className="d-flex justify-content-end">
+      {/* <Modal.Footer className="d-flex justify-content-end">
         <Button
           variant="primary"
           onClick={onHide}
@@ -114,7 +114,7 @@ function InfoModal({ show, onHide }: InfoModalProps) {
         >
           Close
         </Button>
-      </Modal.Footer>
+      </Modal.Footer> */}
     </Modal>
   );
 }
