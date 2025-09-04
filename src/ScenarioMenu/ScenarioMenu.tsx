@@ -28,10 +28,19 @@ function ScenarioMenu() {
 
   useEffect(() => {
     fetch("https://route-optimization-xb1p.onrender.com/scenarios")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
+        console.log("Scenarios loaded:", data);
         setScenarios(data);
         console.log(screenshots);
+      })
+      .catch((err) => {
+        console.error("Error fetching scenarios:", err);
       });
   }, [screenshots]);
 
@@ -54,7 +63,7 @@ function ScenarioMenu() {
         return res.json();
       })
       .then((data) => {
-        console.log(data);
+        console.log("New scenario created:", data);
         const newEntry = {
           id: data.scenario.id,
           name: data.scenario.name,
@@ -72,37 +81,63 @@ function ScenarioMenu() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenario_id: id }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
+        console.log("Delete response:", data);
         if (data.status === "success") {
           setScenarios(scenarios.filter((s) => s.id !== id));
         } else {
           console.error("Failed to delete scenario:", data.error);
         }
       })
-      .catch((err) => console.error("Fetch error:", err));
+      .catch((err) => console.error("Error deleting scenario:", err));
   }
 
   function updateName(id: number, name: string) {
-    console.log("changing Name of ", id + " to " + name);
+    console.log("Changing name of scenario", id, "to", name);
+
     fetch(`https://route-optimization-xb1p.onrender.com/scenarios`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ scenario_id: id, new_name: name }),
     })
-      .then((res) => res.json())
+      .then((res) => {
+        console.log("Update response status:", res.status);
+        console.log("Update response ok:", res.ok);
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data) => {
+        console.log("Update response data:", data);
+        console.log("Data type:", typeof data);
+        console.log("Data status:", data.status);
+
         if (data.status === "success") {
           setScenarios(
             scenarios.map((s: ScenarioType) =>
               s.id === id ? { ...s, name: name } : s,
             ),
           );
+          console.log("Scenario name updated successfully");
         } else {
-          console.error("Failed to update scenario:", data.error);
+          console.error(
+            "Failed to update scenario:",
+            data.error || "Unknown error",
+          );
         }
       })
-      .catch((err) => console.error("Fetch error:", err));
+      .catch((err) => {
+        console.error("Error updating scenario name:", err);
+        console.error("Error details:", err.message);
+      });
   }
 
   return (

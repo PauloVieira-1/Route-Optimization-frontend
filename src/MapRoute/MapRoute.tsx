@@ -390,6 +390,10 @@ const MapRoute = () => {
     customers: Customer[],
     vehicles: Vehicle[],
   ) => {
+    console.log("Getting MDVRP problem...");
+    console.log("Depots:", depots);
+    console.log("Customers:", customers);
+    console.log("Vehicles:", vehicles);
     // Always update validator with latest data
     inputValidator.setData(customers, depots, vehicles);
 
@@ -1222,7 +1226,7 @@ const MapRoute = () => {
       <RoutePlanModal
         show={showPlan}
         onHide={() => setShowPlan(false)}
-        data={mdvrpProblem ? JSON.parse(mdvrpProblem) : undefined}
+        data={mdvrpProblem ? mdvrpProblem : undefined}
       />
     </div>
   );

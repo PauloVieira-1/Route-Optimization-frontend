@@ -1,21 +1,35 @@
 import { Modal, ListGroup, Table } from "react-bootstrap";
 
 interface Route {
+  vehicle?: string; // sometimes missing, so optional
   capacity: number;
   route: string[];
-  vehicle: string;
 }
 
-interface RoutePlanData {
-  routes: Route[];
+interface RouteData {
   status: string;
   total_cost: number;
+  routes: Route[];
 }
 
 interface RoutePlanModalProps {
   show: boolean;
-  data?: RoutePlanData;
+  data?: string | RouteData; // can be JSON string or already parsed object
   onHide: () => void;
+}
+
+// Utility to safely parse data
+function parseRouteData(data?: string | RouteData): RouteData | null {
+  if (!data) return null;
+  try {
+    if (typeof data === "string") {
+      return JSON.parse(data) as RouteData;
+    }
+    return data as RouteData; // already an object
+  } catch (error) {
+    console.error("Invalid route data:", error);
+    return null;
+  }
 }
 
 export default function RoutePlanModal({
@@ -23,6 +37,8 @@ export default function RoutePlanModal({
   onHide,
   data,
 }: RoutePlanModalProps) {
+  const parsedData = parseRouteData(data);
+
   return (
     <Modal show={show} onHide={onHide} centered size="lg">
       <Modal.Header closeButton>
@@ -30,7 +46,7 @@ export default function RoutePlanModal({
       </Modal.Header>
 
       <Modal.Body>
-        {!data ? (
+        {!parsedData ? (
           <p>No data available, try clicking "Calculate" first</p>
         ) : (
           <>
@@ -39,19 +55,24 @@ export default function RoutePlanModal({
               <strong>Status:</strong>{" "}
               <span
                 className={
-                  data.status === "Optimal" ? "text-success" : "text-warning"
+                  parsedData.status === "Optimal"
+                    ? "text-success"
+                    : "text-warning"
                 }
               >
-                {data.status}
+                {parsedData.status}
               </span>
               <br />
-              <strong>Total Cost:</strong> €{data.total_cost.toFixed(2)}
+              <strong>Total Cost:</strong> €{parsedData.total_cost.toFixed(2)}
             </div>
 
             {/* Routes list */}
             <ListGroup>
-              {data.routes.map((route, idx) => (
-                <ListGroup.Item key={route.vehicle} className="mb-3">
+              {parsedData.routes.map((route, idx) => (
+                <ListGroup.Item
+                  key={route.vehicle ?? idx} // always unique
+                  className="mb-3"
+                >
                   <h6 className="fw-bold">Vehicle: {idx + 1}</h6>
                   <p>
                     <strong>Capacity:</strong> {route.capacity}
