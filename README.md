@@ -1,69 +1,87 @@
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+---
 
-Currently, two official plugins are available:
+# Route Optimization Frontend
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+A React-based web application for visualizing and interacting with optimized delivery or travel routes.
+This project serves as the frontend of the **Route Optimization System**, designed to make logistics and path planning more efficient and user-friendly.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🚀 Features
 
-```js
-export default tseslint.config([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
+* Input multiple locations or stops
+* Visualize optimized routes on an interactive map
+* Connects to a backend optimization API for real-time results
+* Clean and responsive UI built with React
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+## 🛠️ Tech Stack
+
+* **React** – Frontend framework
+* **Typescript / TSX** – Core logic and UI rendering
+* **CSS / Bootstrap (if used)** – Styling
+* **Backend API** – Consumes route optimization results from the backend service
+
+---
+
+## 📂 Project Structure
+
+```bash
+Route-Optimization-frontend/
+├── public/             # Static assets
+├── src/
+│   ├── components/     # Reusable UI components
+│   ├── pages/          # Page-level components
+│   ├── App.js          # Main application entry
+│   ├── index.js        # React DOM rendering
+│   └── styles/         # CSS styles
+├── package.json        # Dependencies and scripts
+└── README.md           # Project documentation
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
+## ⚙️ Installation & Setup
 
-export default tseslint.config([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/PauloVieira-1/Route-Optimization-frontend.git
+   cd Route-Optimization-frontend
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Run the development server**
+
+   ```bash
+   npm start
+   ```
+
+   The app will be available at [http://localhost:3000](http://localhost:3000).
+
+---
+
+## 📖 Usage
+
+1. Enter addresses or coordinates into the input form
+2. Submit to fetch an optimized route from the backend API
+3. View the generated route on the interactive map
+4. (Optional) Export or adjust route details
+
+---
+
+## 🧩 Future Improvements
+
+* User authentication
+* Save/load routes for later use
+* Support for different optimization strategies (time, distance, fuel)
+* Mobile-friendly layout
+
+---
