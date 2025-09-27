@@ -34,6 +34,7 @@ import { validateData } from "./validation";
 import Validator from "../validator";
 import type { RoutingErrorEvent } from "./RoutingMachine";
 import RoutePlanModal from "./RoutePlanModal";
+import ErrorModal from "../InfoModal/ErrorModal";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -61,6 +62,8 @@ const MapRoute = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [title, setTitle] = useState("Scenario");
   const [center, setCenter] = useState<[number, number]>([0, 0]);
+  const [showValidErrorsModal, setShowValidErrorsModal] = useState(false);
+
   // const [transportationProbelm, setTransportationProblem] =
   useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
@@ -194,7 +197,7 @@ const MapRoute = () => {
     if (customers.length > 0 || depots.length > 0) {
       const timer = setTimeout(() => {
         validateAllCoordinates();
-      }, 100);
+      }, 110);
       return () => clearTimeout(timer);
     }
   }, [customers, depots]);
@@ -403,7 +406,7 @@ const MapRoute = () => {
     if (errors.length > 0) {
       setValidationErrors(errors);
       setLoading(false);
-      alert("Please fix validation errors before calculating routes.");
+      setShowValidErrorsModal(true);
       return;
     }
 
@@ -734,7 +737,7 @@ const MapRoute = () => {
             variant={validationErrors.length > 0 ? "danger" : "primary"}
             className="fw-bold fs-5 rounded-pill d-flex align-items-center justify-content-between pe-2 ps-4 py-2 "
             style={{ maxWidth: "200px" }}
-            disabled={validationErrors.length > 0 || loading}
+            // disabled={validationErrors.length > 0 || loading}
             onClick={() => {
               setLoading(true);
               validateAllCoordinates();
@@ -1228,6 +1231,11 @@ const MapRoute = () => {
         onHide={() => setShowPlan(false)}
         data={mdvrpProblem ? mdvrpProblem : undefined}
       />
+    <ErrorModal
+      show={showValidErrorsModal}
+      onHide={() => setShowValidErrorsModal(false)}
+      errors={validationErrors}
+    />
     </div>
   );
 };

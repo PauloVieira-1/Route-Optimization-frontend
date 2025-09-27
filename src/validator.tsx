@@ -97,7 +97,20 @@ class Validator {
     return distance < minDistanceMeters;
   }
 
-  // --- Validation methods ---
+  // --- New Empty Data Check ---
+  private checkEmptyData() {
+    if (this.customers.length === 0) {
+      this.addError("No customers provided — cannot run validation.");
+    }
+    if (this.depots.length === 0) {
+      this.addError("No depots provided — at least one depot is required.");
+    }
+    if (this.vehicles.length === 0) {
+      this.addError("No vehicles provided — capacity check will be skipped.");
+    }
+  }
+
+  // --- Coordinate and proximity checks ---
   private checkCoordinates() {
     const allCoords: {
       type: string;
@@ -123,7 +136,6 @@ class Validator {
       }),
     );
 
-    // Check individual coordinates and duplicates
     for (const item of allCoords) {
       const coordValidation = Validator.validateCoordinate(item.lat, item.lng);
       if (!coordValidation.valid && coordValidation.error) {
@@ -178,6 +190,7 @@ class Validator {
   // --- Main validation ---
   public validateAll(): string[] {
     this.errors = [];
+    this.checkEmptyData(); // ✅ Check if customers/depots/vehicles are empty
     this.checkCoordinates();
     this.checkCapacity();
     return this.errors;
